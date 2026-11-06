@@ -1,0 +1,8 @@
+{
+  "resumed_epochs": 2,
+  "uninterrupted_epochs": 2,
+  "identical_history": true,
+  "identical_final_tensors": true,
+  "device": "cpu",
+  "scope": "procedural fixture smoke only"
+}

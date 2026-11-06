@@ -1,0 +1,3 @@
+path,label,quality,score_fake,decision,original_decision,original_score
+images/test/real/0000035.png,0,70,0.4053342044353485,0,2,0.4380423426628113
+images/test/fake/0000008.png,1,30,0.5648089647293091,2,1,0.6178370118141174

@@ -1,0 +1,17 @@
+{
+  "thresholds": {
+    "low": 0.425,
+    "high": 0.5750000000000001
+  },
+  "checkpoint_sha256": "350896a214116b91b9d32a9b6ada16fc9b63ab4a11dbba47a8d0c67e4f705812",
+  "manifest_sha256": "f035502175342e6c44c93f5c781bee6cfff2200244c32891d12b746cea143bac",
+  "qualities": [
+    "original",
+    90,
+    70,
+    50,
+    30
+  ],
+  "run_label": "SMOKE_ONLY_NOT_A_FACE_DETECTOR",
+  "test_count": 6
+}

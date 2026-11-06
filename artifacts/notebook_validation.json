@@ -1,0 +1,20 @@
+{
+  "executed_locally": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8
+  ],
+  "source": "fixture",
+  "quick": true,
+  "unexecuted_interactive_stages": [
+    9,
+    10,
+    11
+  ],
+  "colab_drive_and_browser_runtime": "not executed in hosted Colab here"
+}

@@ -1,0 +1,77 @@
+Traceback (most recent call last):
+  File "/workspace/.venvs/facejpeg/lib/python3.12/site-packages/urllib3/connectionpool.py", line 779, in urlopen
+    self._prepare_proxy(conn)
+  File "/workspace/.venvs/facejpeg/lib/python3.12/site-packages/urllib3/connectionpool.py", line 1074, in _prepare_proxy
+    conn.connect()
+  File "/workspace/.venvs/facejpeg/lib/python3.12/site-packages/urllib3/connection.py", line 844, in connect
+    self._tunnel()
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/http/client.py", line 1029, in _tunnel
+    raise OSError(f"Tunnel connection failed: {code} {message.strip()}")
+OSError: Tunnel connection failed: 403 Forbidden
+
+The above exception was the direct cause of the following exception:
+
+urllib3.exceptions.ProxyError: ('Unable to connect to proxy', OSError('Tunnel connection failed: 403 Forbidden'))
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/workspace/.venvs/facejpeg/lib/python3.12/site-packages/requests/adapters.py", line 696, in send
+    resp = conn.urlopen(
+           ^^^^^^^^^^^^^
+  File "/workspace/.venvs/facejpeg/lib/python3.12/site-packages/urllib3/connectionpool.py", line 847, in urlopen
+    retries = retries.increment(
+              ^^^^^^^^^^^^^^^^^^
+  File "/workspace/.venvs/facejpeg/lib/python3.12/site-packages/urllib3/util/retry.py", line 555, in increment
+    raise MaxRetryError(_pool, url, reason) from reason  # type: ignore[arg-type]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+urllib3.exceptions.MaxRetryError: HTTPSConnectionPool(host='api.kaggle.com', port=443): Max retries exceeded with url: /v1/datasets.DatasetApiService/GetDataset (Caused by ProxyError('Unable to connect to proxy', OSError('Tunnel connection failed: 403 Forbidden')))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/workspace/Final-Projects/scripts/download_data.py", line 14, in download
+    root = Path(kagglehub.dataset_download(DATASET))
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/.venvs/facejpeg/lib/python3.12/site-packages/kagglehub/datasets.py", line 52, in dataset_download
+    resolved_path, _ = registry.dataset_resolver(
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/.venvs/facejpeg/lib/python3.12/site-packages/kagglehub/registry.py", line 28, in __call__
+    return impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/.venvs/facejpeg/lib/python3.12/site-packages/kagglehub/resolver.py", line 35, in __call__
+    path, version = self._resolve(
+                    ^^^^^^^^^^^^^^
+  File "/workspace/.venvs/facejpeg/lib/python3.12/site-packages/kagglehub/http_resolver.py", line 125, in _resolve
+    h = h.with_version(_get_current_version(api_client, h))
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/.venvs/facejpeg/lib/python3.12/site-packages/kagglehub/http_resolver.py", line 364, in _get_current_version
+    dataset = handle_call(lambda: api_client.datasets.dataset_api_client.get_dataset(r))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/.venvs/facejpeg/lib/python3.12/site-packages/kagglehub/exceptions.py", line 67, in handle_call
+    return fn()
+           ^^^^
+  File "/workspace/.venvs/facejpeg/lib/python3.12/site-packages/kagglehub/http_resolver.py", line 364, in <lambda>
+    dataset = handle_call(lambda: api_client.datasets.dataset_api_client.get_dataset(r))
+                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/.venvs/facejpeg/lib/python3.12/site-packages/kagglesdk/datasets/services/dataset_api_service.py", line 33, in get_dataset
+    return self._client.call("datasets.DatasetApiService", "GetDataset", request, ApiDataset)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/.venvs/facejpeg/lib/python3.12/site-packages/kagglesdk/kaggle_http_client.py", line 104, in call
+    http_response = self._session.send(http_request, **settings)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/.venvs/facejpeg/lib/python3.12/site-packages/requests/sessions.py", line 784, in send
+    r = adapter.send(request, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/.venvs/facejpeg/lib/python3.12/site-packages/requests/adapters.py", line 723, in send
+    raise ProxyError(e, request=request)
+requests.exceptions.ProxyError: HTTPSConnectionPool(host='api.kaggle.com', port=443): Max retries exceeded with url: /v1/datasets.DatasetApiService/GetDataset (Caused by ProxyError('Unable to connect to proxy', OSError('Tunnel connection failed: 403 Forbidden')))
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/workspace/Final-Projects/scripts/download_data.py", line 27, in <module>
+    download(a.record)
+  File "/workspace/Final-Projects/scripts/download_data.py", line 16, in download
+    raise RuntimeError("تعذّر تنزيل Kaggle. استخدم خلية 4B لرفع ZIP أو 4C لقراءة Drive، ولا تضع مفتاحك في الدفتر.") from exc
+RuntimeError: تعذّر تنزيل Kaggle. استخدم خلية 4B لرفع ZIP أو 4C لقراءة Drive، ولا تضع مفتاحك في الدفتر.

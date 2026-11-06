@@ -1,0 +1,13 @@
+{
+  "single_face_api": "passed",
+  "multiple_faces_api": "passed",
+  "checkpoint_ui_parity": "passed",
+  "previews_size": [
+    224,
+    224
+  ],
+  "share": false,
+  "real_sample": "Official FFHQ teaser; test only, not training or distributed",
+  "original_result": "النتيجة غير حاسمة\n\nدرجة ترجيح التوليد: 0.4687",
+  "compressed_result": "النتيجة غير حاسمة\n\nدرجة ترجيح التوليد: 0.4523"
+}

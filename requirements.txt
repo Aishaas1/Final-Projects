@@ -1,0 +1,14 @@
+torch>=2.5,<3
+torchvision>=0.20,<1
+numpy>=1.26,<2.3
+pandas>=2.2,<3
+matplotlib>=3.8,<4
+scikit-learn>=1.5,<2
+Pillow>=10.4,<13
+opencv-python-headless>=4.10,<5
+gradio>=5.12,<6
+ImageHash>=4.3,<5
+kagglehub>=0.3,<1
+pytest>=8,<10
+nbformat>=5.10,<6
+ipython>=8,<10

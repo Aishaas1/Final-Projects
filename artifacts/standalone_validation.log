@@ -1,0 +1,107 @@
+الكود جاهز، ولا حاجة إلى ZIP: /workspace/standalone-check/facejpeg_standalone
+PASSED standalone bootstrap
+Project: /workspace/standalone-check/facejpeg_standalone
+PyTorch: 2.5.1+cpu Torchvision: 0.20.1+cpu GPU: False
+PASSED stage 1
+PASSED stage 2
+Experiment: /workspace/standalone-check/facejpeg_standalone/runs/smoke_demo
+PASSED stage 3
+Raw: /workspace/standalone-check/facejpeg_standalone/data/smoke_demo_fixture
+PASSED stage 4
+{
+  "raw_root": "/workspace/standalone-check/facejpeg_standalone/data/smoke_demo_fixture",
+  "readable": 40,
+  "rejected": 0,
+  "exact_duplicates_removed": 0,
+  "conflict_images_excluded": 0,
+  "kept": 40,
+  "seed": 42,
+  "phash_radius": 4,
+  "identity_rows": 0,
+  "identity_limitation": "No identity guarantee for rows without identity metadata. pHash is heuristic, not face recognition.",
+  "data_kind": "procedural_fixture",
+  "counts": {
+    "('test', 0)": 3,
+    "('test', 1)": 3,
+    "('train', 0)": 14,
+    "('train', 1)": 14,
+    "('val', 0)": 3,
+    "('val', 1)": 3
+  }
+}
+{
+  "raw_root": "/workspace/standalone-check/facejpeg_standalone/data/smoke_demo_fixture",
+  "readable": 40,
+  "rejected": 0,
+  "exact_duplicates_removed": 0,
+  "conflict_images_excluded": 0,
+  "kept": 40,
+  "seed": 42,
+  "phash_radius": 4,
+  "identity_rows": 0,
+  "identity_limitation": "No identity guarantee for rows without identity metadata. pHash is heuristic, not face recognition.",
+  "data_kind": "procedural_fixture",
+  "counts": {
+    "('test', 0)": 3,
+    "('test', 1)": 3,
+    "('train', 0)": 14,
+    "('train', 1)": 14,
+    "('val', 0)": 3,
+    "('val', 1)": 3
+  }
+}
+PASSED stage 5
+device=cpu; mode=SMOKE_ONLY_NOT_A_FACE_DETECTOR; train=28 val=6
+{'epoch': 1, 'train_loss': 0.6590779679162162, 'val_loss': 0.5708073377609253}
+{'epoch': 2, 'train_loss': 0.5675910030092511, 'val_loss': 0.5138264199097952}
+Saved: /workspace/standalone-check/facejpeg_standalone/runs/smoke_demo/best.pt
+{
+  "schema_version": 1,
+  "architecture": "mobilenet_v3_small",
+  "classes": [
+    "real",
+    "fake"
+  ],
+  "preprocess": {
+    "size": 224,
+    "resize": "center_square_bicubic",
+    "color": "RGB",
+    "mean": [
+      0.485,
+      0.456,
+      0.406
+    ],
+    "std": [
+      0.229,
+      0.224,
+      0.225
+    ],
+    "exif_transpose": true,
+    "jpeg_subsampling": 2
+  },
+  "thresholds": {
+    "low": 0.425,
+    "high": 0.5750000000000001
+  },
+  "manifest_sha256": "f035502175342e6c44c93f5c781bee6cfff2200244c32891d12b746cea143bac",
+  "seed": 42,
+  "quick": true,
+  "data_kind": "procedural_fixture",
+  "pretrained": true,
+  "run_label": "SMOKE_ONLY_NOT_A_FACE_DETECTOR",
+  "epoch": 1,
+  "val_loss": 0.5138264199097952,
+  "threshold_selection": "validation_only_utility_correct1_falseaccusation-4_missedfake-1_abstain0"
+}
+PASSED stage 6
+Score reload check: 0.5975353121757507 0.5975353121757507
+Thresholds: {'low': 0.425, 'high': 0.5750000000000001}
+PASSED stage 7
+ quality  n_total  n_real  n_fake  fake_detected  fake_detection_rate_all_fake  real_falsely_accused  false_accusation_rate_all_real  abstain_real  abstain_fake  abstain_total  abstain_rate_all  coverage_all  selective_accuracy_accepted  precision_predicted_fake  roc_auc_all  binary_accuracy_at_0_5_all
+original        6       3       3              2                      0.666667                     0                             0.0             1             1              2          0.333333      0.666667                          1.0                       1.0          1.0                         1.0
+      90        6       3       3              2                      0.666667                     0                             0.0             1             1              2          0.333333      0.666667                          1.0                       1.0          1.0                         1.0
+      70        6       3       3              2                      0.666667                     0                             0.0             0             1              1          0.166667      0.833333                          1.0                       1.0          1.0                         1.0
+      50        6       3       3              2                      0.666667                     0                             0.0             1             1              2          0.333333      0.666667                          1.0                       1.0          1.0                         1.0
+      30        6       3       3              1                      0.333333                     0                             0.0             1             2              3          0.500000      0.500000                          1.0                       1.0          1.0                         1.0
+PASSED stage 8
+Standalone notebook through evaluation passed; no project ZIP used.

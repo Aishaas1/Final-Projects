@@ -1,0 +1,7 @@
+path,label,score_fake,decision
+images/val/fake/0000001.png,1,0.5975353121757507,1
+images/val/fake/0000012.png,1,0.5796253085136414,1
+images/val/fake/0000015.png,1,0.613197922706604,1
+images/val/real/0000027.png,0,0.4003254771232605,0
+images/val/real/0000030.png,0,0.38928431272506714,0
+images/val/real/0000032.png,0,0.4108554422855377,0

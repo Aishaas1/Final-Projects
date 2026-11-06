@@ -1,0 +1,7 @@
+{
+  "bootstrap": "passed",
+  "default_cpu_stages_1_to_8": "passed",
+  "zip_required": false,
+  "notebook_bytes": 75268,
+  "scientific_face_training": "not performed; procedural fixture only"
+}
