@@ -1,0 +1,8 @@
+20:59:16 | بدء المرحلة: تنزيل Kaggle — قد يشمل الانتظار/المصادقة/فك الملفات; total=None
+20:59:16 | توقفت المرحلة تنزيل Kaggle — قد يشمل الانتظار/المصادقة/فك الملفات بسبب RuntimeError؛ راجع رسالة الخطأ في الخلية.
+Traceback (most recent call last):
+  File "/workspace/Final-Projects/scripts/download_data.py", line 61, in <module>
+    download(a.record)
+  File "/workspace/Final-Projects/scripts/download_data.py", line 49, in download
+    raise RuntimeError(message + " اختر SOURCE='zip' أو 'drive' في إعدادات الدفتر للمتابعة.") from None
+RuntimeError: منع وكيل الشبكة الوصول إلى Kaggle (403). هذا ليس دليلًا على غياب مفتاح؛ راجع نطاقات الشبكة أو استخدم ZIP/Drive. اختر SOURCE='zip' أو 'drive' في إعدادات الدفتر للمتابعة.

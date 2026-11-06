@@ -1,0 +1,14 @@
+{
+  "share": false,
+  "checkpoint": "artifacts/review/quick/best.pt",
+  "لم أجد": "passed",
+  "تالف": "passed",
+  "عدة وجوه": "passed",
+  "http": 200,
+  "single_face": "passed",
+  "score_parity": "passed",
+  "lossless_png_previews": "passed",
+  "class_distributions": "passed",
+  "no_real_training_claim": true,
+  "sample": "Official FFHQ README teaser/crop, UI test only, not training or redistributed"
+}

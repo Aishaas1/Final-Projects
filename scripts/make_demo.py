@@ -1,5 +1,6 @@
 """Procedural images for software smoke testing, NOT real/generated face research data."""
 import argparse
+import json
 from pathlib import Path
 import numpy as np
 from PIL import Image, ImageDraw
@@ -24,6 +25,8 @@ def make_demo(root, count=20):
             else:
                 draw.rectangle((x, y, x + 120, y + 120), fill=color)
             im.save(folder / f"fixture_{i:03d}.png")
+    (root / "_fixture_metadata.json").write_text(json.dumps({"data_kind": "procedural_fixture",
+        "warning": "Software test shapes, not human face detection data"}))
     return root
 
 

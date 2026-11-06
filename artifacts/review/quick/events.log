@@ -1,0 +1,14 @@
+21:10:07 | بدء المرحلة: التحقق من التقسيم وبيئة التشغيل; total=None
+21:10:07 | device=cpu; batch_size=8; GPU=none
+21:10:07 | بدء المرحلة: تحميل MobileNetV3 والأوزان الرسمية; total=None
+21:10:07 | بدء المرحلة: تدريب Epoch 1/2; total=28
+21:10:08 | بدء المرحلة: تحقق Epoch 1/2; total=6
+21:10:08 | بدء المرحلة: حفظ checkpoint ونتائج الحقبة; total=None
+21:10:08 | checkpoint حقبة 1 محفوظ | loss=0.6747 val_loss=0.5713 accuracy=0.571 val_accuracy=1.000 epoch=1.4s ETA≈1.4s
+21:10:08 | بدء المرحلة: تدريب Epoch 2/2; total=28
+21:10:09 | بدء المرحلة: تحقق Epoch 2/2; total=6
+21:10:10 | بدء المرحلة: حفظ checkpoint ونتائج الحقبة; total=None
+21:10:10 | checkpoint حقبة 2 محفوظ | loss=0.5567 val_loss=0.5183 accuracy=0.964 val_accuracy=1.000 epoch=1.7s ETA≈0.0s
+21:10:10 | بدء المرحلة: اختيار الحدود من التحقق فقط; total=6
+21:10:11 | أفضل نموذج وحدود التحقق جاهزة: /workspace/facejpeg-release-check/facejpeg_final_v2/runs/quick_v2/best.pt
+21:10:11 | اكتملت العملية؛ elapsed=3.94s

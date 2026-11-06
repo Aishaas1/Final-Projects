@@ -1,0 +1,12 @@
+# Preserve the CUDA-enabled torch/torchvision pair preinstalled by Colab.
+# Check that pair by importing it before installation; never replace it with CPU wheels.
+numpy>=1.26,<2.3
+pandas>=2.2,<3
+matplotlib>=3.8,<4
+scikit-learn>=1.5,<2
+Pillow>=10.4,<13
+opencv-python-headless>=4.10,<5
+gradio>=5.12,<6
+ImageHash>=4.3,<5
+kagglehub>=0.3,<1
+tqdm>=4.66,<5

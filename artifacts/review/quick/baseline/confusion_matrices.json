@@ -1,0 +1,25 @@
+{
+  "rows": [
+    "real",
+    "fake"
+  ],
+  "columns": [
+    "real",
+    "fake",
+    "inconclusive"
+  ],
+  "matrices": {
+    "original": [
+      [
+        2,
+        0,
+        1
+      ],
+      [
+        0,
+        2,
+        1
+      ]
+    ]
+  }
+}

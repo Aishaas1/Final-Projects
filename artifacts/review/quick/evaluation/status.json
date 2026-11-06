@@ -1,0 +1,12 @@
+{
+  "status": "completed",
+  "stage": "حفظ الجداول والرسوم والتقرير",
+  "completed": 0,
+  "total": null,
+  "last_success": "اكتمل تقييم 6 صورة × 7 حالات؛ لم تُعدّل حدود التحقق",
+  "elapsed_stage_seconds": 1.3723940609997953,
+  "elapsed_run_seconds": 1.7432566679999582,
+  "seconds_since_progress": 1.3723940609997953,
+  "units_per_second": null,
+  "eta_seconds": null
+}

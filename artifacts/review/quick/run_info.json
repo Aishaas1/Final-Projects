@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "architecture": "mobilenet_v3_small",
+  "classes": [
+    "real",
+    "fake"
+  ],
+  "preprocess": {
+    "size": 224,
+    "resize": "center_square_bicubic",
+    "color": "RGB",
+    "mean": [
+      0.485,
+      0.456,
+      0.406
+    ],
+    "std": [
+      0.229,
+      0.224,
+      0.225
+    ],
+    "exif_transpose": true,
+    "jpeg_subsampling": 2
+  },
+  "thresholds": {
+    "low": 0.425,
+    "high": 0.5750000000000001
+  },
+  "manifest_sha256": "f035502175342e6c44c93f5c781bee6cfff2200244c32891d12b746cea143bac",
+  "seed": 42,
+  "quick": true,
+  "data_kind": "procedural_fixture",
+  "training_config": {
+    "batch_size": 8,
+    "lr": 0.0001,
+    "warmup_epochs": 0,
+    "finetune_blocks": 0,
+    "amp": false,
+    "workers": 0
+  },
+  "pretrained": true,
+  "run_label": "SMOKE_ONLY_NOT_A_FACE_DETECTOR",
+  "epoch": 1,
+  "val_loss": 0.5183209578196207,
+  "threshold_selection": "validation_only_utility_correct1_falseaccusation-4_missedfake-1_abstain0"
+}

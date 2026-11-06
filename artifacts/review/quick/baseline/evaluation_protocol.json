@@ -1,0 +1,15 @@
+{
+  "thresholds": {
+    "low": 0.425,
+    "high": 0.5750000000000001
+  },
+  "checkpoint_sha256": "53030c0dad2e76bb700836986f319a1687f18140fb471e19bcec5024be549a34",
+  "manifest_sha256": "f035502175342e6c44c93f5c781bee6cfff2200244c32891d12b746cea143bac",
+  "qualities": [
+    "original"
+  ],
+  "run_label": "SMOKE_ONLY_NOT_A_FACE_DETECTOR",
+  "test_count": 6,
+  "decision_threshold_source": "validation only; unchanged across JPEG qualities",
+  "binary_metrics_policy": "threshold 0.5; zero_division=0; separate from three-way UI"
+}

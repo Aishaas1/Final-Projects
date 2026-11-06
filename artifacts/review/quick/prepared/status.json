@@ -1,0 +1,12 @@
+{
+  "status": "completed",
+  "stage": "حفظ المعالجة المشتركة بعد التقسيم",
+  "completed": 40,
+  "total": 40,
+  "last_success": "اكتمل تجهيز 40 صورة؛ التقسيم والتوازن والتداخل اجتازت الفحص",
+  "elapsed_stage_seconds": 0.22835907899934682,
+  "elapsed_run_seconds": 0.4532644419996359,
+  "seconds_since_progress": 0.010188444997766055,
+  "units_per_second": 175.16273132330514,
+  "eta_seconds": 0.0
+}

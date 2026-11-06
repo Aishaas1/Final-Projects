@@ -1,0 +1,6 @@
+{
+  "dataset": "xhlulu/140k-real-and-fake-faces",
+  "status": "failed",
+  "reason": "network_policy",
+  "message_ar": "منع وكيل الشبكة الوصول إلى Kaggle (403). هذا ليس دليلًا على غياب مفتاح؛ راجع نطاقات الشبكة أو استخدم ZIP/Drive."
+}

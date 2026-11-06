@@ -85,6 +85,17 @@ def load_bundle(path, device="cpu"):
         raise ValueError("Unsupported architecture")
     if bundle.get("thresholds") is None:
         raise ValueError("Select validation thresholds before inference")
+    low, high = bundle["thresholds"].get("low"), bundle["thresholds"].get("high")
+    if not isinstance(low, (int, float)) or not isinstance(high, (int, float)) or not 0 <= low < high <= 1:
+        raise ValueError("Invalid checkpoint decision thresholds")
+    cfg = bundle.get("preprocess", {})
+    if cfg.get("resize") != "center_square_bicubic" or cfg.get("size") != 224 or cfg.get("color") != "RGB":
+        raise ValueError("Unsupported checkpoint preprocessing")
+    mean, std = cfg.get("mean", []), cfg.get("std", [])
+    if (not isinstance(mean, (list, tuple)) or not isinstance(std, (list, tuple)) or len(mean) != 3 or len(std) != 3
+            or not all(isinstance(v, (int, float)) and np.isfinite(v) for v in [*mean, *std])
+            or any(s <= 0 for s in std)):
+        raise ValueError("Invalid normalization parameters")
     model = build_model(False)
     model.load_state_dict(bundle["model_state"])
     return model.to(device).eval(), bundle

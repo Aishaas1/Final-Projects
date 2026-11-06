@@ -1,5 +1,7 @@
 # تقرير التنفيذ الفعلي — 2026-11-06
 
+> هذا سجل النسخة الأولى المحفوظ للتتبع. المراجعة الحالية في [REVIEW_AND_FIXES_AR.md](REVIEW_AND_FIXES_AR.md)، وأدلتها في artifacts/review. أرقام الستة اختبارات ومراحل الدفتر القديمة أدناه تخص الإصدارالأول، وليست ملخص الإصدار2.
+
 ## النتائج المؤكدة
 
 بيئة Linux وPython3.12.14 بلا GPU؛ ثُبّت PyTorch2.5.1+cpu وTorchvision0.20.1+cpu وGradio5.50.0 داخل `/workspace/.venvs/facejpeg`. تفاصيل الإصدارات في `artifacts/environment_versions.json`. نُفّذ نص التثبيت المحفوظ فعليًا، ثم أُعيد تشغيله بعد إضافة IPython ونجحت اختبارات المشروع.

@@ -1,12 +1,14 @@
-"""Execute noninteractive notebook stages 1–8 locally and retain genuine outputs.
+"""Execute all final notebook stages locally, with Gradio launch disabled.
 
 Run from the extracted project root in its installed environment. This validates
 the default CPU fixture workflow; it does NOT emulate Colab uploads or Drive.
 """
+import argparse
 import base64
 import contextlib
 import io
 import json
+import os
 from pathlib import Path
 
 import nbformat
@@ -15,7 +17,13 @@ import IPython.display as ipdisplay
 
 
 def main():
-    path = Path("FaceJPEG_Colab.ipynb")
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--output", default="artifacts/review/notebook")
+    args = parser.parse_args()
+    project_root = Path.cwd().resolve()
+    output = (project_root / args.output).resolve()
+    output.mkdir(parents=True, exist_ok=True)
+    path = project_root / "FaceJPEG_Final_Colab.ipynb"
     notebook = nbformat.read(path, as_version=4)
     namespace, completed = {"__name__": "__notebook__"}, []
     current = None
@@ -38,8 +46,6 @@ def main():
         for cell in notebook.cells:
             if cell.cell_type != "code":
                 continue
-            if len(completed) == 8:
-                break
             current = cell
             current.outputs = []
             stream = io.StringIO()
@@ -53,12 +59,14 @@ def main():
     finally:
         ipdisplay.display = original_display
     nbformat.validate(notebook)
-    nbformat.write(notebook, path)
+    nbformat.write(notebook, output / "executed_quick.ipynb")
     record = {"executed_locally": completed, "source": "fixture", "quick": True,
-              "unexecuted_interactive_stages": [9, 10, 11],
+              "gradio_launch_in_notebook": "disabled; tested separately by local API",
               "colab_drive_and_browser_runtime": "not executed in hosted Colab here"}
-    Path("artifacts/notebook_validation.json").write_text(json.dumps(record, indent=2))
+    (output / "validation.json").write_text(json.dumps(record, indent=2))
+    os.chdir(project_root)
 
 
 if __name__ == "__main__":
+    os.environ.setdefault("FACEJPEG_NO_UI", "1")
     main()
