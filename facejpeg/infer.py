@@ -55,6 +55,11 @@ class Predictor:
         self.device = device or ("cuda" if torch.cuda.is_available() and not self.bundle["quick"] else "cpu")
         self.model.to(self.device)
 
+    @property
+    def face_classification_enabled(self):
+        return (self.bundle.get("data_kind") == "research_faces"
+                and self.bundle.get("run_label") != "SMOKE_ONLY_NOT_A_FACE_DETECTOR")
+
     @torch.inference_mode()
     def score(self, im):
         x = tensorize(im, self.bundle["preprocess"]).unsqueeze(0).to(self.device)
@@ -67,14 +72,18 @@ class Predictor:
         raw = validated_image(path)
         original = canonical(raw, self.bundle["preprocess"])
         compressed = jpeg_copy(original, quality)
+        if not self.face_classification_enabled:
+            result = "كشف الأصالة غير متاح — النموذج غير مدرّب على صور الوجوه."
+            note = ("⚠️ اختبار برمجي: هذه الأوزان لا تدعم الحكم على أصالة الوجه، لذلك لم نحسب درجة Real أو AI-Generated. "
+                    "المتاح هنا معاينة الصورة وضغط JPEG فقط. لتفعيل الكشف اختر MODE='REAL'، ووفّر بيانات وجوه حقيقية ومولّدة، "
+                    "ودرّب النموذج ثم حمّل best.pt من تلك التجربة. تغيير اسم الوضع وحده لا يحوّل الأوزان القديمة إلى كاشف وجوه.")
+            return original, compressed, result, result, note, None, None
         scores = [self.score(im) for im in [original, compressed]]
         pred = decisions(scores, self.bundle["thresholds"])
         texts = [f"{LABELS_AR[int(d)]}\n\nدرجة ترجيح التوليد: {s:.4f}\n\nترجيح الفوتوغرافية: {1-s:.4f}" for s, d in zip(scores, pred)]
         low, high = self.bundle["thresholds"]["low"], self.bundle["thresholds"]["high"]
         note = f"الحدود المحفوظة: فوتوغرافية ≤ {low:.3f}، مولّدة ≥ {high:.3f}، وبينهما غير حاسمة. الدرجة ليست إثباتًا لأصالة الصورة."
-        if self.bundle["run_label"] == "SMOKE_ONLY_NOT_A_FACE_DETECTOR":
-            note = "⚠️ أوزان اختبار برمجي على أشكال اصطناعية فقط؛ هذه الأحكام لا تقيس كشف الوجوه المولّدة. درّب على البيانات الحقيقية قبل تفسيرها.\n\n" + note
-        elif self.bundle["quick"]:
+        if self.bundle["quick"]:
             note = "⚠️ نموذج تجربة سريعة على عينة صغيرة؛ نتائجه أولية.\n\n" + note
         distributions = [{"Real — فوتوغرافية": 1-s, "AI-Generated — مولّدة": s} for s in scores]
         return original, compressed, texts[0], texts[1], note, *distributions

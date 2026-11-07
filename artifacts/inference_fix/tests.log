@@ -1,0 +1,43 @@
+...........................                                              [100%]
+=============================== warnings summary ===============================
+tests/test_face_inference_gate.py::test_demo_score_components_hidden_and_no_top_class_label
+tests/test_review.py::test_missing_weights_ui_is_clear_and_checkpoint_thresholds_validated
+  /workspace/Final-Projects/app.py:43: DeprecationWarning: The 'css' parameter in the Blocks constructor will be removed in Gradio 6.0. You will need to pass 'css' to Blocks.launch() instead.
+    with gr.Blocks(title="الوجوه المولّدة وضغط JPEG", css=".gradio-container {direction: rtl;}") as demo:
+
+tests/test_face_inference_gate.py::test_demo_score_components_hidden_and_no_top_class_label
+tests/test_review.py::test_missing_weights_ui_is_clear_and_checkpoint_thresholds_validated
+  /workspace/Final-Projects/app.py:48: DeprecationWarning: Setting 'api_name=False' in event listeners will be removed in Gradio 6.0. You will need to use 'api_visibility="private"' instead.
+    upload.change(preview, upload, raw_preview, api_name=False)
+
+tests/test_face_inference_gate.py::test_demo_score_components_hidden_and_no_top_class_label
+  /workspace/Final-Projects/tests/test_face_inference_gate.py:45: DeprecationWarning: Setting 'api_name=False' in event listeners will be removed in Gradio 6.0. You will need to use 'api_visibility="private"' instead.
+    app = create_app("artifacts/review/quick/best.pt")
+
+tests/test_face_inference_gate.py::test_demo_score_components_hidden_and_no_top_class_label
+tests/test_face_inference_gate.py::test_demo_score_components_hidden_and_no_top_class_label
+tests/test_review.py::test_missing_weights_ui_is_clear_and_checkpoint_thresholds_validated
+tests/test_review.py::test_missing_weights_ui_is_clear_and_checkpoint_thresholds_validated
+  /workspace/.venvs/facejpeg/lib/python3.12/site-packages/gradio/component_meta.py:189: DeprecationWarning: Passing a tuple to 'row_count' will be removed in Gradio 6.0. You will need to use 'row_count' for the initial row count and 'row_limits' for min/max constraints instead. For example, row_count=(5, 'fixed') should become row_count=5, row_limits=(5, 5).
+    return fn(self, **kwargs)
+
+tests/test_face_inference_gate.py::test_demo_score_components_hidden_and_no_top_class_label
+tests/test_face_inference_gate.py::test_demo_score_components_hidden_and_no_top_class_label
+tests/test_review.py::test_missing_weights_ui_is_clear_and_checkpoint_thresholds_validated
+tests/test_review.py::test_missing_weights_ui_is_clear_and_checkpoint_thresholds_validated
+  /workspace/.venvs/facejpeg/lib/python3.12/site-packages/gradio/component_meta.py:189: DeprecationWarning: The 'col_count' parameter will be removed in Gradio 6.0. You will need to use 'column_count' instead.
+    return fn(self, **kwargs)
+
+tests/test_face_inference_gate.py::test_demo_score_components_hidden_and_no_top_class_label
+tests/test_face_inference_gate.py::test_demo_score_components_hidden_and_no_top_class_label
+tests/test_review.py::test_missing_weights_ui_is_clear_and_checkpoint_thresholds_validated
+tests/test_review.py::test_missing_weights_ui_is_clear_and_checkpoint_thresholds_validated
+  /workspace/.venvs/facejpeg/lib/python3.12/site-packages/gradio/component_meta.py:189: DeprecationWarning: Passing a tuple to 'col_count' will be removed in Gradio 6.0. You will need to use 'column_count' for the initial column count and 'column_limits' for min/max constraints instead. For example, col_count=(3, 'fixed') should become column_count=3, column_limits=(3, 3).
+    return fn(self, **kwargs)
+
+tests/test_review.py::test_missing_weights_ui_is_clear_and_checkpoint_thresholds_validated
+  /workspace/Final-Projects/tests/test_review.py:154: DeprecationWarning: Setting 'api_name=False' in event listeners will be removed in Gradio 6.0. You will need to use 'api_visibility="private"' instead.
+    app = create_app(tmp_path / "missing.pt")
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+27 passed, 18 warnings in 9.75s

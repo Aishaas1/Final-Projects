@@ -87,7 +87,7 @@ def test_arabic_errors_and_multiple_faces(tmp_path, monkeypatch):
         infer.validated_image(valid)
 
 
-def test_checkpoint_reload_and_ui_same_score(monkeypatch):
+def test_checkpoint_reload_and_demo_does_not_display_face_scores(monkeypatch):
     checkpoint = Path("artifacts/smoke/best.pt")
     if not checkpoint.exists():
         pytest.skip("Run the documented smoke training to produce best.pt")
@@ -103,5 +103,6 @@ def test_checkpoint_reload_and_ui_same_score(monkeypatch):
     assert abs(predictor.score(im) - direct) < 1e-7
     monkeypatch.setattr(infer, "face_count", lambda _: 1)
     result = predictor.compare(path, 70)
-    assert f"{direct:.4f}" in result[2]
+    assert "كشف الأصالة غير متاح" in result[2]
+    assert f"{direct:.4f}" not in result[2]
     assert "اختبار برمجي" in result[4]

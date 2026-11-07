@@ -27,8 +27,8 @@ def build():
         cells.append(nbf.v4.new_code_cell(s.strip()))
 
     md("""# FaceJPEG — كشف الوجوه المولّدة ودراسة أثر JPEG
-## دفتر نهائي مستقل، الإصدار 2
-الكود مضمن هنا؛ **لا تحتاج ZIP المشروع**. الإعداد الافتراضي Quick Test يختبر البرمجيات على40 شكلًا هندسيًا، وليس صور وجوه، ولا ينتج دقة علمية لكشف التوليد. بدّل إعداد `MODE` في المرحلة3 إلى `REAL` لتدريب بيانات الوجوه، ثم اختر مصدرها. لا توجد أوزان كشف وجوه حقيقية مضمّنة أو نتائج تدريب كامل مُدّعاة.
+## دفتر نهائي مستقل، الإصدار 2.1
+الكود مضمن هنا؛ **لا تحتاج ZIP المشروع**. الإعداد الافتراضي Quick Test يختبر البرمجيات على40 شكلًا هندسيًا. في هذا الوضع تعرض الواجهة الأصل وضغط JPEG فقط، دون أي حكم أو درجة على أصالة الوجه. بدّل `MODE` في المرحلة3 إلى `REAL` ووفّر بيانات الوجوه ودرّب النموذج لتفعيل الكشف. تغيير MODE وحده لا يكفي، ولا توجد أوزان كشف وجوه حقيقية مضمّنة.
 
 في أول تجربة شغّل **Runtime → Run all** بالإعدادات الافتراضية. للتدريب الحقيقي فعّل GPU من **Runtime → Change runtime type → GPU**، وحدّد البيانات واسم تجربة جديدًا في3 قبل Run all. ZIP البيانات يُرفع من أيقونة الملفات في Colab ويُكتب مساره؛ Google Drive يحتاج موافقتك على التركيب.
 
@@ -47,7 +47,7 @@ _blob = base64.b64decode({encoded!r})
 assert hashlib.sha256(_blob).hexdigest() == {digest!r}, "Embedded source checksum failed"
 _files = json.loads(gzip.decompress(_blob).decode("utf-8"))
 _base = Path(os.environ.get("FACEJPEG_WORKSPACE", "/content" if IN_COLAB else str(Path.cwd())))
-PROJECT = (_base / "facejpeg_final_v2").resolve()
+PROJECT = (_base / "facejpeg_final_v2_1").resolve()
 PROJECT.mkdir(parents=True, exist_ok=True)
 for _rel, _text in _files.items():
     _path = (PROJECT / _rel).resolve()
@@ -59,6 +59,19 @@ for _rel, _text in _files.items():
     _path.write_text(_text, encoding="utf-8")
 os.chdir(PROJECT)
 sys.path.insert(0, str(PROJECT)) if str(PROJECT) not in sys.path else None
+def _refresh_project_imports():
+    # Reload only this project's modules if an earlier notebook used another folder.
+    removed = []
+    for _name, _module in list(sys.modules.items()):
+        if _name == "facejpeg" or _name.startswith("facejpeg.") or _name in {{"app", "scripts.make_demo", "scripts.download_data"}}:
+            _file = getattr(_module, "__file__", None)
+            if not _file or not Path(_file).resolve().is_relative_to(PROJECT):
+                sys.modules.pop(_name, None)
+                removed.append(_name)
+    return removed
+_removed = _refresh_project_imports()
+if _removed:
+    print("أعيد تهيئة وحدات المشروع من النسخة الجديدة:", len(_removed))
 os.environ.setdefault("MPLCONFIGDIR", str(PROJECT / ".cache/matplotlib"))
 _torch_pair_ok = False
 try:
@@ -114,7 +127,7 @@ print(f"انتهى التثبيت والتحقق خلال {time.monotonic()-_ins
     code('''
 MODE = "QUICK"  # @param ["QUICK", "REAL"]
 SOURCE = "kaggle"  # @param ["kaggle", "zip", "drive"]
-EXPERIMENT = "quick_v2" if MODE == "QUICK" else "faces_v2"
+EXPERIMENT = "quick_v2_1" if MODE == "QUICK" else "faces_v2_1"
 USE_DRIVE = False  # @param {type:"boolean"}
 DATA_ZIP = ""  # مثال /content/faces.zip
 DRIVE_RAW_PATH = "/content/drive/MyDrive/facejpeg/raw"
@@ -242,7 +255,7 @@ print("Best checkpoint:", BEST)
 print("Resume images included:", EXPORT_INCLUDE_PREPARED)
 ''')
     md("""## 10 — واجهة Gradio العربية
-ارفع JPG/PNG لوجه أمامي واحد واضح في المنتصف؛ سيُعرض الأصل الموحّد والنسخة المضغوطة ودرجات الفئتين والحكم الثلاثي. لا وجه/عدة وجوه/ملف تالف تظهر برسالة عربية. Haar بوابة بسيطة قد تخطئ. إن كانت الأوزان اختبارًا هندسيًا أو مفقودة تُعرض رسالة دائمة؛ درجات الفئات غير معايرة ولا تثبت الأصالة.
+ارفع JPG/PNG لوجه أمامي واحد واضح في المنتصف. في QUICK تعرض الواجهة الأصل الموحّد والنسخة المضغوطة مع عبارة «كشف الأصالة غير متاح»؛ لا تُحسب درجات Real/AI ولا تظهر أحكام عليها. بعد تدريب صور الوجوه الفعلية وتحميل best.pt تظهر الدرجات والحكم الثلاثي، وتبقى الدرجات غير معايرة. لا وجه/عدة وجوه/ملف تالف تظهر برسالة عربية. Haar بوابة بسيطة قد تخطئ.
 
 في Colab ينشئ SHARE_GRADIO رابطًا عامًا مؤقتًا؛ افتحه بعد تشغيل الخلية ولا ترفع صورًا حساسة. محليًا لا حاجة للمشاركة العامة: `python app.py --checkpoint /path/to/best.pt`. أغلق الواجهة بعد الانتهاء.""")
     code('''

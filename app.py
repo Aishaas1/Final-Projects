@@ -9,19 +9,23 @@ from facejpeg.infer import Predictor
 def create_app(checkpoint):
     try:
         predictor = Predictor(checkpoint)
-        startup_message = ("⚠️ لا توجد أوزان كشف وجوه حقيقية في هذه التجربة؛ الأوزان الحالية اختبار برمجيات على أشكال هندسية فقط. "
-                           "درّب Real Training على بيانات الوجوه ثم اختر best.pt."
-                           if predictor.bundle["data_kind"] == "procedural_fixture" else
+        startup_message = ("⚠️ كشف الأصالة غير متاح: الأوزان الحالية لم تُدرّب على صور الوجوه. "
+                           "هذه واجهة معاينة وضغط JPEG فقط؛ درّب Real Training على بيانات الوجوه ثم اختر best.pt."
+                           if not predictor.face_classification_enabled else
                            "تم تحميل أوزان تجربة وجوه. الدرجة غير معايرة، ولا تثبت أصالة الصورة أو التعميم على مولّدات أخرى.")
     except (ValueError, OSError, RuntimeError, EOFError, pickle.UnpicklingError, KeyError, TypeError) as exc:
         predictor = None
         startup_message = f"لا توجد أوزان صالحة للتنبؤ: {exc}"
+    classify_faces = predictor is not None and predictor.face_classification_enabled
 
     def compare(path, quality):
         try:
             if predictor is None:
                 return None, None, "", "", startup_message, None, None
-            return predictor.compare_details(path, int(quality))
+            result = list(predictor.compare_details(path, int(quality)))
+            for i in [5, 6]:
+                result[i] = [[label, round(score * 100, 2)] for label, score in result[i].items()] if result[i] else []
+            return tuple(result)
         except (ValueError, OSError) as exc:
             return None, None, "", "", f"**{exc}**", None, None
 
@@ -43,16 +47,21 @@ def create_app(checkpoint):
         raw_preview = gr.Image(label="معاينة الملف المرفوع", interactive=False, format="png")
         upload.change(preview, upload, raw_preview, api_name=False)
         quality = gr.Dropdown(choices=[100, 90, 70, 50, 30, 10], value=70, label="جودة إعادة ترميز JPEG")
-        button = gr.Button("تحليل الأصل والنسخة المضغوطة", variant="primary", interactive=predictor is not None)
+        button = gr.Button("تحليل الأصل والنسخة المضغوطة" if classify_faces else "معاينة وضغط JPEG فقط — دون كشف الأصالة",
+                           variant="primary", interactive=predictor is not None)
         with gr.Row():
             with gr.Column():
                 original = gr.Image(label="الأصل بعد توحيد المعالجة — دون JPEG إضافي", interactive=False, format="png")
                 result_original = gr.Markdown()
-                scores_original = gr.Label(label="ترجيح الفئتين — درجات غير معايرة", num_top_classes=2)
+                scores_original = gr.Dataframe(headers=["الفئة", "ترجيح غير معاير (%)"], datatype=["str", "number"],
+                    type="array", row_count=(0, "dynamic"), col_count=(2, "fixed"),
+                    label="درجات الفئتين؛ الحكم في النص أعلاه", interactive=False, visible=classify_faces)
             with gr.Column():
                 compressed = gr.Image(label="النسخة المضغوطة مباشرة من الأصل الموحّد", interactive=False, format="png")
                 result_compressed = gr.Markdown()
-                scores_compressed = gr.Label(label="ترجيح الفئتين بعد JPEG — غير معاير", num_top_classes=2)
+                scores_compressed = gr.Dataframe(headers=["الفئة", "ترجيح غير معاير (%)"], datatype=["str", "number"],
+                    type="array", row_count=(0, "dynamic"), col_count=(2, "fixed"),
+                    label="درجات الفئتين بعد JPEG؛ الحكم في النص أعلاه", interactive=False, visible=classify_faces)
         note = gr.Markdown("الصور لا تُستخدم في التدريب. في Colab قد ينشئ Gradio رابطًا عامًا مؤقتًا إذا اخترت المشاركة.")
         button.click(compare, [upload, quality], [original, compressed, result_original, result_compressed, note,
                                                scores_original, scores_compressed], api_name="compare")

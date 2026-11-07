@@ -40,12 +40,25 @@ def validate(checkpoint, output, face, multiple_faces, port=7861):
         assert len(response) == 7 and tuple(response[2:5]) == tuple(expected[2:5])
         for index in [0, 1]:
             assert np.array_equal(np.asarray(read_rgb(response[index])), np.asarray(expected[index]))
-        for distribution in expected[5:]:
-            assert abs(sum(distribution.values()) - 1.) < 1e-7
-        record.update(http=200, single_face="passed", score_parity="passed",
-                      lossless_png_previews="passed", class_distributions="passed",
+        classify_faces = Predictor(checkpoint).face_classification_enabled
+        if classify_faces:
+            for distribution in expected[5:]:
+                assert abs(sum(distribution.values()) - 1.) < 1e-7
+            record["class_distributions"] = "passed"
+            record["score_parity"] = "passed"
+        else:
+            assert expected[5:] == (None, None)
+            assert "كشف الأصالة غير متاح" in response[2]
+            assert "يرجّح أنها" not in " ".join(response[2:5])
+            assert "Real —" not in str(response[5:])
+            record["demo_face_judgments_and_scores_suppressed"] = "passed"
+            record["score_parity"] = "not_applicable_demo_scores_suppressed"
+        record.update(http=200, single_face="passed", response_text_parity="passed",
+                      lossless_png_previews="passed",
+                      face_classification_enabled=classify_faces,
                       no_real_training_claim=True,
-                      sample="Official FFHQ README teaser/crop, UI test only, not training or redistributed")
+                      single_face_file=Path(face).name, multiple_faces_file=Path(multiple_faces).name,
+                      sample="Caller-supplied images for UI tests only; not training data or a classification benchmark")
     finally:
         app.close()
     output = Path(output)

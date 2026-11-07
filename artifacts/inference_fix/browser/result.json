@@ -1,0 +1,8 @@
+{
+  "browser": "Chromium via Playwright",
+  "headless": true,
+  "generated_face_upload": "passed",
+  "demo_mode_face_decisions": "suppressed",
+  "demo_mode_class_scores": "hidden",
+  "jpeg_preview": "passed"
+}
