@@ -2,6 +2,8 @@
 
 **بلا GPU:** افتح [دفتر تدريب الوجوه على CPU](https://colab.research.google.com/github/Aishaas1/Final-Projects/blob/main/FaceJPEG_CPU_Training.ipynb). يبدأ بـMODE=REAL_CPU، ويخزن ميزات الصور مرة واحدة ثم يدرّب الرأس على بيانات وجوه فعلية. يحتاج البيانات؛ لا يحتوي أوزان كشف وجوه مدرّبة مسبقًا. [شرح مسار CPU وحدود التحقق](docs/CPU_TRAINING_AR.md).
 
+**لتجربة صورة لاحقًا دون إعادة التدريب:** افتح [دفتر التنبؤ فقط](https://colab.research.google.com/github/Aishaas1/Final-Projects/blob/main/FaceJPEG_Predict_Only.ipynb)، وشغّل خلاياه الأربع لتحميل `best.pt` المحفوظ ثم فتح الواجهة. لا يحتاج بيانات التدريب أو GPU أو تركيب Drive. يقبل أوزان تجربة وجوه فعلية، ويرفض أوزان QUICK الهندسية.
+
 [افتح الدفتر النهائي في Google Colab](https://colab.research.google.com/github/Aishaas1/Final-Projects/blob/main/FaceJPEG_Final_Colab.ipynb) · [تقرير المراجعة والإصلاحات](docs/REVIEW_AND_FIXES_AR.md) · [إصلاح أحكام QUICK المضللة](docs/INFERENCE_FIX_AR.md) · [بطاقة البيانات والحقوق](docs/DATASET_CARD_AR.md)
 
 المشروع يستخدم Python وPyTorch وMobileNetV3-Small وواجهة Gradio عربية. يقارن فوتوغرافيات الوجوه بوجوه مولّدة بالكامل؛ لا يدّعي كشف كل أنواع التزييف أو تبديل الوجوه. القرار ثلاثي: «يرجّح أنها صورة فوتوغرافية»، «يرجّح أنها مولّدة بالذكاء الاصطناعي»، «النتيجة غير حاسمة». درجات الفئتين ترجيحات غير معايرة، وليست دليل أصالة.

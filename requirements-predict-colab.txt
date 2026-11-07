@@ -1,0 +1,6 @@
+# Keep Colab's compatible preinstalled torch/torchvision pair.
+# Prediction does not require dataset download or training libraries.
+numpy>=1.26,<2.3
+Pillow>=10.4,<13
+opencv-python-headless>=4.10,<5
+gradio>=5.12,<6

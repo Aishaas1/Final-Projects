@@ -1,0 +1,17 @@
+{
+  "notebook_code_cells": 4,
+  "all_notebooks_syntax_valid": true,
+  "hosted_colab_upload_tested": false,
+  "genuine_face_training_performed": false,
+  "face_accuracy_measured": false,
+  "dependency_install_mode": "offline; existing packages satisfied requirements",
+  "bootstrap_and_dependencies_executed": true,
+  "procedural_checkpoint_rejected": "هذا نموذج اختبار أشكال QUICK؛ لا يكشف أصالة الوجوه. اختر best.pt بعد تدريب REAL_CPU أو REAL على بيانات الوجوه. تغيير الاسم أو MODE لا يكفي.",
+  "launch_blocked_without_valid_face_model": true,
+  "simulated_colab_upload_rejects_procedural_weights": true,
+  "existing_test_suite": {
+    "passed": 32,
+    "warnings": 18,
+    "seconds": 11.8
+  }
+}

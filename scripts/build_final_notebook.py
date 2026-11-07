@@ -11,7 +11,7 @@ import nbformat as nbf
 
 def build():
     root = Path(__file__).resolve().parents[1]
-    paths = [root / name for name in ["app.py", "requirements.txt", "requirements-colab.txt"]]
+    paths = [root / name for name in ["app.py", "requirements.txt", "requirements-colab.txt", "requirements-predict-colab.txt"]]
     paths += sorted((root / "facejpeg").glob("*.py"))
     paths += [root / "scripts" / name for name in ["make_demo.py", "download_data.py"]]
     paths += [root / "docs" / name for name in ["DATASET_CARD_AR.md", "PRESENTATION_AR.md"]]
@@ -295,6 +295,73 @@ else:
     cpu.metadata["colab"]["name"] = "FaceJPEG_CPU_Training.ipynb"
     nbf.validate(cpu)
     nbf.write(cpu, root / "FaceJPEG_CPU_Training.ipynb")
+    predict = nbf.v4.new_notebook()
+    predict.metadata = copy.deepcopy(nb.metadata)
+    predict.metadata["colab"]["name"] = "FaceJPEG_Predict_Only.ipynb"
+    predict_bootstrap = bootstrap.replace(
+        'print("لا توجد CUDA متاحة؛ يمكن تدريب الوجوه بوضع REAL_CPU. QUICK اختبار أشكال فقط، وREAL يحتاج GPU.")',
+        'print("التنبؤ متاح على CPU؛ لا يحتاج GPU أو بيانات التدريب.")',
+    )
+    install = [c.source for c in cells if c.cell_type == "code"][1].replace(
+        '"requirements-colab.txt" if _torch_pair_ok', '"requirements-predict-colab.txt" if _torch_pair_ok',
+    ).replace(
+        'print(json.dumps(hardware_info(), ensure_ascii=False, indent=2))',
+        'print("جاهز لتحميل best.pt؛ التنبؤ لا يحتاج GPU.")',
+    )
+    predict.cells = [
+        nbf.v4.new_markdown_cell("""# FaceJPEG — اختبار صور جديدة بنموذج محفوظ
+هذا دفتر للتنبؤ فقط من أربع خلايا؛ لا ينزل بيانات الوجوه ولا يعيد التدريب. يعمل على CPU.
+
+**قبل مغادرة جلسة التدريب:** احفظ `best.pt` الناتج عن تدريب صور الوجوه على جهازك أو Drive. في دفتر التدريب يظهر مساره في المرحلة9، ويمكن تنزيله من لوحة Files أو استخراج ملفه من ZIP النتائج. حفظ الدفتر وحده لا يحفظ الأوزان. `last.pt` للاستكمال وليس بديلًا عن `best.pt` المختار بحدود التحقق.
+
+شغّل الخلايا1–4 بالترتيب، وارفع ملف النموذج في الخلية3، ثم الصور من الواجهة في الخلية4. لا تحتاج حساب Kaggle أو تركيب Drive؛ يمكنك رفع النموذج من جهازك. أوزان QUICK الهندسية مرفوضة هنا لأنها لا تكشف أصالة الوجوه. لا توجد أوزان كشف وجوه حقيقية مضمّنة.
+
+إغلاق تبويب Colab قد يُبقي الجلسة مدة، لكن الجلسة ورابط Gradio مؤقتان. إذا انتهت الجلسة أعد هذه الخلايا بملف النموذج المحفوظ، وافتح رابط الواجهة الجديد. ما دامت الواجهة تعمل اختبر صورًا متتابعة دون تشغيل الخلايا مجددًا. الدرجة ترجيح غير معاير وليست إثبات أصالة."""),
+        nbf.v4.new_markdown_cell("## 1 — تهيئة الكود\nيفك الكود المضمن ويعرّف IN_COLAB والمسارات؛ شغّله أولًا في كل جلسة جديدة."),
+        nbf.v4.new_code_cell(predict_bootstrap.strip()),
+        nbf.v4.new_markdown_cell("## 2 — تثبيت متطلبات التنبؤ\nيحافظ على زوج Torch/Torchvision في Colab ويثبت متطلبات الواجهة فقط. لا ينزل مجموعة صور أو أوزان ImageNet."),
+        nbf.v4.new_code_cell(install),
+        nbf.v4.new_markdown_cell("""## 3 — تحميل النموذج المحفوظ
+في Colab اترك CHECKPOINT_PATH فارغًا واختر ملف `best.pt` من جهازك عند ظهور زر الرفع. أو اكتب مسار ملف موجود في الجلسة. محليًا اكتب مساره. يُفحص ترتيب الفئات والمعالجة وحدود القرار المحفوظة. لا تغيّر الحدود ولا تحتاج بيانات التدريب/الاختبار للتنبؤ."""),
+        nbf.v4.new_code_cell('''
+MODEL_READY = False
+PREDICT_CHECKPOINT = None
+CHECKPOINT_PATH = ""  # مثال /content/best.pt؛ اتركه فارغًا للرفع من جهازك
+from facejpeg.infer import Predictor
+if not CHECKPOINT_PATH.strip():
+    if not IN_COLAB:
+        raise ValueError("اكتب مسار best.pt في CHECKPOINT_PATH ثم أعد هذه الخلية.")
+    from google.colab import files
+    _uploaded = files.upload()
+    if len(_uploaded) != 1:
+        raise ValueError("اختر ملف نموذج واحدًا: best.pt الناتج عن تدريب صور الوجوه.")
+    CHECKPOINT_PATH = next(iter(_uploaded))
+if not Path(CHECKPOINT_PATH).is_file():
+    raise FileNotFoundError("لم أجد ملف النموذج. ارفعه أو صحّح CHECKPOINT_PATH.")
+_checked_predictor = Predictor(CHECKPOINT_PATH, device="cpu")
+if not _checked_predictor.face_classification_enabled:
+    del _checked_predictor
+    raise ValueError("هذا نموذج اختبار أشكال QUICK؛ لا يكشف أصالة الوجوه. اختر best.pt بعد تدريب REAL_CPU أو REAL على بيانات الوجوه. تغيير الاسم أو MODE لا يكفي.")
+PREDICT_CHECKPOINT = Path(CHECKPOINT_PATH).resolve()
+MODEL_READY = True
+print("تم تحميل نموذج تجربة الوجوه:", PREDICT_CHECKPOINT.name)
+print("حدود القرار المحفوظة:", _checked_predictor.bundle["thresholds"])
+del _checked_predictor
+'''.strip()),
+        nbf.v4.new_markdown_cell("""## 4 — فتح الواجهة واختبار الصور
+ارفع JPG/PNG لوجه واحد، واختر جودة JPEG ثم اضغط التحليل. لتجربة صورة أخرى بدّل الصورة واضغط الزر؛ لا تعِد التدريب أو تحميل النموذج. في Colab يظهر رابط عام مؤقت؛ لا ترفع صورًا حساسة. إذا انتهت الجلسة افتح هذا الدفتر مجددًا وشغّل1–4 بملف best.pt نفسه."""),
+        nbf.v4.new_code_cell('''
+if not globals().get("MODEL_READY", False) or not globals().get("PREDICT_CHECKPOINT"):
+    raise RuntimeError("شغّل الخلايا1–3 وحمّل best.pt الصالح أولًا.")
+from app import create_app
+if "demo" in globals():
+    demo.close()
+demo = create_app(PREDICT_CHECKPOINT)
+demo.launch(share=IN_COLAB, debug=False)
+'''.strip()),
+    ]
+    nbf.validate(predict)
+    nbf.write(predict, root / "FaceJPEG_Predict_Only.ipynb")
     print(f"Final notebook and compatibility copies: {(root/'FaceJPEG_Final_Colab.ipynb').stat().st_size:,} bytes")
 
 
