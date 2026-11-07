@@ -1,0 +1,23 @@
+{
+  "purpose": "UI upload examples only; not a training set or accuracy benchmark",
+  "real_nasa.png": {
+    "ground_truth": "photographic",
+    "source": "NASA portrait of Eileen Collins distributed by scikit-image",
+    "source_url": "https://raw.githubusercontent.com/scikit-image/scikit-image/v0.24.0/skimage/data/astronaut.png",
+    "rights_evidence": "https://github.com/scikit-image/scikit-image/blob/v0.24.0/skimage/data/_fetchers.py",
+    "rights_statement": "No known copyright restrictions, released into the public domain.",
+    "modifications": "none; exact original bytes",
+    "face_count": 1,
+    "sha256": "88431cd9653ccd539741b555fb0a46b61558b301d4110412b5bc28b5e3ea6cb5",
+    "upload_validation": "passed using facejpeg.infer.validated_image"
+  },
+  "ai_generated.png": {
+    "ground_truth": "fully_AI_generated",
+    "source": "OpenAI image-generation tool; fictional adult face, no reference image",
+    "generated_on": "2026-11-07",
+    "modifications": "none after generation",
+    "face_count": 1,
+    "sha256": "8ba8f49c2c8ce88af2b14b87fb8a4c95704183cc14206c3846e4b6bf9354185b",
+    "upload_validation": "passed using facejpeg.infer.validated_image"
+  }
+}
