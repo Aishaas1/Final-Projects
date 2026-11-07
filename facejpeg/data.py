@@ -18,8 +18,19 @@ def inventory(root):
     root = Path(root).resolve()
     if not root.is_dir():
         raise FileNotFoundError(f"مجلد البيانات غير موجود: {root}")
-    paths, counts = [], {"real": 0, "fake": 0, "ambiguous": 0}
+    paths, counts = [], {"real": 0, "fake": 0, "ambiguous": 0, "contains_procedural_fixture": False}
     for p in root.rglob("*"):
+        if p.is_file() and p.name in {"_fixture_metadata.json", "audit.json"}:
+            if not p.resolve().is_relative_to(root):
+                raise ValueError("Dataset metadata symlink escapes data root")
+            if p.name == "_fixture_metadata.json":
+                counts["contains_procedural_fixture"] = True
+            else:
+                try:
+                    if json.loads(p.read_text(encoding="utf-8")).get("data_kind") == "procedural_fixture":
+                        counts["contains_procedural_fixture"] = True
+                except (ValueError, AttributeError):
+                    pass
         if not p.is_file() or p.suffix.lower() not in {".jpg", ".jpeg", ".png"}:
             continue
         if not p.resolve().is_relative_to(root):
@@ -124,6 +135,8 @@ def _prepare(root, output, metadata, seed, max_per_class, phash_radius, data_kin
         meta = md.set_index("path").to_dict("index")
     monitor.stage("حصر ملفات البيانات")
     paths, counts = inventory(root)
+    if counts["contains_procedural_fixture"]:
+        data_kind = "procedural_fixture"
     write_json(output / "inventory.json", counts)
     monitor.event(f"عُثر على ملفات الفئتين (ليست فحص صلاحية بعد): {counts}")
     monitor.stage("فحص الصور والتلف والبصمات", len(paths))

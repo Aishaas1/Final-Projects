@@ -52,7 +52,8 @@ class Predictor:
             raise ValueError("لا توجد أوزان محفوظة. درّب النموذج أولًا ثم اختر best.pt من مجلد التجربة.")
         torch.set_num_threads(min(4, torch.get_num_threads()))
         self.model, self.bundle = load_bundle(checkpoint, "cpu")
-        self.device = device or ("cuda" if torch.cuda.is_available() and not self.bundle["quick"] else "cpu")
+        cpu_profile = self.bundle["quick"] or self.bundle.get("training_config", {}).get("cache_features", False)
+        self.device = device or ("cuda" if torch.cuda.is_available() and not cpu_profile else "cpu")
         self.model.to(self.device)
 
     @property
@@ -85,5 +86,7 @@ class Predictor:
         note = f"الحدود المحفوظة: فوتوغرافية ≤ {low:.3f}، مولّدة ≥ {high:.3f}، وبينهما غير حاسمة. الدرجة ليست إثباتًا لأصالة الصورة."
         if self.bundle["quick"]:
             note = "⚠️ نموذج تجربة سريعة على عينة صغيرة؛ نتائجه أولية.\n\n" + note
+        elif self.bundle["run_label"] == "REAL_CPU_FROZEN_BACKBONE":
+            note = "نموذج CPU برأس مدرّب وميزات مجمّدة؛ راجع نتائج الاختبار المستقل وحدود التعميم.\n\n" + note
         distributions = [{"Real — فوتوغرافية": 1-s, "AI-Generated — مولّدة": s} for s in scores]
         return original, compressed, texts[0], texts[1], note, *distributions

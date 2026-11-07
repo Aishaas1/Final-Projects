@@ -17,9 +17,9 @@ def hardware_info():
         result.update(gpu_name=torch.cuda.get_device_name(), gpu_total_gib=total / 2**30,
                       gpu_free_gib=free / 2**30, gpu_allocated_gib=torch.cuda.memory_allocated() / 2**30)
     else:
-        result["guidance_ar"] = ("لا توجد CUDA متاحة. في Colab اختر Runtime → Change runtime type → GPU. "
-            "نسخة torch ذات اللاحقة +cpu لا تستخدم CUDA؛ ابدأ جلسة Colab نظيفة مع GPU. "
-            "اختبار QUICK يعمل على CPU. هذا التشخيص لا يثبت سبب انتظار جلسة سابقة.")
+        result["guidance_ar"] = ("لا توجد CUDA متاحة. اختر REAL_CPU لتدريب الوجوه على المعالج، أو QUICK لاختبار البرمجيات فقط. "
+            "لوضع REAL الذي يضبط الشبكة اختر Runtime → Change runtime type → GPU. "
+            "نسخة torch ذات اللاحقة +cpu لا تستخدم CUDA. هذا التشخيص لا يثبت سبب انتظار جلسة سابقة.")
     return result
 
 

@@ -3,6 +3,7 @@ import base64
 import gzip
 import hashlib
 import json
+import copy
 from pathlib import Path
 
 import nbformat as nbf
@@ -27,10 +28,10 @@ def build():
         cells.append(nbf.v4.new_code_cell(s.strip()))
 
     md("""# FaceJPEG — كشف الوجوه المولّدة ودراسة أثر JPEG
-## دفتر نهائي مستقل، الإصدار 2.1
-الكود مضمن هنا؛ **لا تحتاج ZIP المشروع**. الإعداد الافتراضي Quick Test يختبر البرمجيات على40 شكلًا هندسيًا. في هذا الوضع تعرض الواجهة الأصل وضغط JPEG فقط، دون أي حكم أو درجة على أصالة الوجه. بدّل `MODE` في المرحلة3 إلى `REAL` ووفّر بيانات الوجوه ودرّب النموذج لتفعيل الكشف. تغيير MODE وحده لا يكفي، ولا توجد أوزان كشف وجوه حقيقية مضمّنة.
+## دفتر نهائي مستقل، الإصدار 2.2
+الكود مضمن هنا؛ **لا تحتاج ZIP المشروع**. QUICK اختبار أشكال هندسية وواجهة JPEG بلا أحكام أصالة. لتدريب الوجوه اختر REAL على GPU أو REAL_CPU بلا GPU، ثم وفّر البيانات ودرّب النموذج. تغيير MODE وحده لا يكفي، ولا توجد أوزان كشف وجوه حقيقية مضمّنة.
 
-في أول تجربة شغّل **Runtime → Run all** بالإعدادات الافتراضية. للتدريب الحقيقي فعّل GPU من **Runtime → Change runtime type → GPU**، وحدّد البيانات واسم تجربة جديدًا في3 قبل Run all. ZIP البيانات يُرفع من أيقونة الملفات في Colab ويُكتب مساره؛ Google Drive يحتاج موافقتك على التركيب.
+في أول تجربة شغّل Runtime → Run all بالإعدادات الافتراضية. لتدريب الوجوه بلا GPU اختر REAL_CPU؛ لوضع REAL فعّل GPU. حدّد البيانات واسم تجربة جديدًا في المرحلة3. ZIP البيانات يُرفع من لوحة Files، وDrive يحتاج موافقتك.
 
 كل مرحلة تعرض تقدمها. `events.log` و`status.json` يسجلان المرحلة وآخر عملية وETA من القياسات؛ استمرار heartbeat يثبت أن المراقب حي فقط، ولا يثبت تقدم العداد أو سلامة كل عملية. لا توجد مهلة تلغي تدريبًا سليمًا. حدود القرار تختار من التحقق قبل فتح الاختبار، والدرجة ترجيح غير معاير وليست شهادة أصالة.""")
     md("""## 1 — تهيئة الكود وفحص بيئة التشغيل وGPU
@@ -47,7 +48,7 @@ _blob = base64.b64decode({encoded!r})
 assert hashlib.sha256(_blob).hexdigest() == {digest!r}, "Embedded source checksum failed"
 _files = json.loads(gzip.decompress(_blob).decode("utf-8"))
 _base = Path(os.environ.get("FACEJPEG_WORKSPACE", "/content" if IN_COLAB else str(Path.cwd())))
-PROJECT = (_base / "facejpeg_final_v2_1").resolve()
+PROJECT = (_base / "facejpeg_final_v2_2").resolve()
 PROJECT.mkdir(parents=True, exist_ok=True)
 for _rel, _text in _files.items():
     _path = (PROJECT / _rel).resolve()
@@ -83,7 +84,7 @@ try:
         _free, _total = torch.cuda.mem_get_info()
         print("GPU:", torch.cuda.get_device_name(), "free/total GiB:", round(_free/2**30,2), round(_total/2**30,2))
     else:
-        print("لا توجد CUDA متاحة؛ Quick Test صالح على CPU. لتدريب الوجوه فعّل GPU في جلسة Colab نظيفة.")
+        print("لا توجد CUDA متاحة؛ يمكن تدريب الوجوه بوضع REAL_CPU. QUICK اختبار أشكال فقط، وREAL يحتاج GPU.")
 except ImportError:
     print("Torch/Torchvision غير مثبتين؛ ستُعرض تعليمات التثبيت في المرحلة2.")
 except Exception as _error:
@@ -96,7 +97,7 @@ print("Project:", PROJECT)
     code('''
 import threading
 if IN_COLAB and not _torch_pair_ok:
-    raise RuntimeError("ابدأ جلسة Colab نظيفة (Disconnect and delete runtime) ثم فعّل GPU وأعد التشغيل؛ لن نستبدل Torch المعطوب تلقائيًا بنسخة CPU.")
+    raise RuntimeError("ابدأ جلسة Colab نظيفة مع CPU أو GPU حسب النمط وأعد التشغيل؛ لن نستبدل زوج Torch المعطوب تلقائيًا.")
 if _torch_pair_ok:
     import re
     _torch_version = tuple(map(int, re.match(r"([0-9]+)[.]([0-9]+)", str(torch.__version__)).groups()))
@@ -121,29 +122,31 @@ print(json.dumps(hardware_info(), ensure_ascii=False, indent=2))
 print(f"انتهى التثبيت والتحقق خلال {time.monotonic()-_install_start:.1f}s")
 ''')
     md("""## 3 — اختيار Quick Test أو Real Training والحفظ
-غيّر `MODE` فقط لاختيار نوع التجربة: QUICK يولّد40 شكلًا ويستخدم CPU وحقبتين؛ REAL يختار بيانات وجوه وGPU و10 حقبات مع warmup للرأس ثم ضبط آخر3 كتل. `SOURCE` يخص REAL فقط. اختر اسم تجربة جديدًا عند تغيير البيانات أو الإعدادات؛ للاستكمال استخدم الاسم والإعدادات نفسيهما وزد EPOCHS إلى الإجمالي المطلوب.
+QUICK يفحص البرمجيات على40 شكلًا. REAL يدرّب الوجوه على GPU مع ضبط آخر3 كتل. REAL_CPU يدرّب الرأس على صور وجوه فعلية بلا GPU: يثبت الشبكة ويخزن ميزات التدريب والتحقق مرة واحدة، دون صور الاختبار. يستخدم عينة حتى1000 صورة لكل فئة بعد التدقيق والتقسيم و20 حقبة كحد أقصى وجدولة للتعلم وإيقافًا مبكرًا. هذه استراتيجية عملية لغياب GPU، ولا تضمن نسبة دقة أو تكافئ ضبط الشبكة كاملة. اختر اسم تجربة جديدًا عند تغيير البيانات أو الاستراتيجية، والإعدادات نفسها للاستكمال.
 
 `DATA_ZIP` مسار ملف سبق رفعه من شريط ملفات Colab، لا رابط ويب. `SOURCE='drive'` يقرأ مجلدًا مستخرجًا بـreal وfake. تفعيل USE_DRIVE يحفظ الصور المجهزة وbest.pt وlast.pt والتقارير. لا تضع أسرارًا في الخلايا. Batch Size يُختار تحفظيًا من الذاكرة، ويمكن تعديله عند الحاجة؛ ليس ضمانًا ضد نفاد الذاكرة.""")
     code('''
-MODE = "QUICK"  # @param ["QUICK", "REAL"]
+MODE = "QUICK"  # @param ["QUICK", "REAL", "REAL_CPU"]
 SOURCE = "kaggle"  # @param ["kaggle", "zip", "drive"]
-EXPERIMENT = "quick_v2_1" if MODE == "QUICK" else "faces_v2_1"
+EXPERIMENT = "quick_v2_2" if MODE == "QUICK" else "faces_cpu_v2_2" if MODE == "REAL_CPU" else "faces_gpu_v2_2"
 USE_DRIVE = False  # @param {type:"boolean"}
 DATA_ZIP = ""  # مثال /content/faces.zip
 DRIVE_RAW_PATH = "/content/drive/MyDrive/facejpeg/raw"
 METADATA_CSV = None  # اختياري: path,identity,source_id بمسارات نسبية
-EPOCHS = 2 if MODE == "QUICK" else 10
-BATCH_SIZE = None  # None = اختيار تحفظي آلي؛ مثال 16 عند نقص الذاكرة
-WORKERS = None  # None = 0 على CPU، وحتى2 على CUDA
+EPOCHS = 2 if MODE == "QUICK" else 20 if MODE == "REAL_CPU" else 10
+BATCH_SIZE = 64 if MODE == "REAL_CPU" else None  # دفعة ميزات، وليست64 صورة للشبكة
+WORKERS = 0 if MODE == "REAL_CPU" else None
+MAX_PER_CLASS = 1000 if MODE == "REAL_CPU" else None
 RESUME = True
 ALLOW_CPU_REAL = False  # سماح صريح لتدريب الوجوه البطيء بلا GPU
 EXPORT_INCLUDE_PREPARED = False  # ZIP خفيف؛ صور الاستكمال محفوظة في Drive عند تفعيله
 SHARE_GRADIO = True  # رابط عام مؤقت عند تشغيل الواجهة في Colab
 LAUNCH_UI = os.environ.get("FACEJPEG_NO_UI") != "1"
-assert MODE in {"QUICK", "REAL"} and SOURCE in {"kaggle", "zip", "drive"}
+assert MODE in {"QUICK", "REAL", "REAL_CPU"} and SOURCE in {"kaggle", "zip", "drive"}
 QUICK = MODE == "QUICK"
-if not QUICK and not torch.cuda.is_available() and not ALLOW_CPU_REAL:
-    raise RuntimeError("فعّل GPU من Runtime → Change runtime type أو اختر MODE='QUICK'. لم يبدأ تنزيل البيانات أو تدريب كامل على CPU خفية.")
+CPU_REAL = MODE == "REAL_CPU"
+if MODE == "REAL" and not torch.cuda.is_available() and not ALLOW_CPU_REAL:
+    raise RuntimeError("اختر MODE='REAL_CPU' لتدريب الوجوه بلا GPU، أو فعّل GPU لوضع REAL. QUICK اختبار برمجيات فقط.")
 if USE_DRIVE or (not QUICK and SOURCE == "drive"):
     if not IN_COLAB:
         raise RuntimeError("محليًا استخدم ZIP/مجلدًا محليًا بدل تركيب Drive")
@@ -181,7 +184,7 @@ if not (PREPARED / "manifest.csv").exists():
         RAW_ROOT = safe_extract(DATA_ZIP, PROJECT / "data" / (EXPERIMENT + "_raw"))
     else:
         RAW_ROOT = Path(DRIVE_RAW_PATH)
-    prepare(RAW_ROOT, PREPARED, metadata=METADATA_CSV, data_kind=_kind)
+    prepare(RAW_ROOT, PREPARED, metadata=METADATA_CSV, data_kind=_kind, max_per_class=MAX_PER_CLASS)
 manifest = validate_manifest(PREPARED)
 audit = json.loads((PREPARED / "audit.json").read_text())
 if audit["data_kind"] != _kind:
@@ -191,7 +194,7 @@ display(pd.read_csv(PREPARED / "source_format_resolution.csv"))
 print("تم فحص التقسيم: لا تداخل في المجموعات أو الهوية/المصدر المعروفين.")
 ''')
     md("""## 5 — بناء MobileNetV3-Small
-نفحص البنية ورأسًا ثنائيًا (real=0, fake=1) دون تدريب هنا. أوزان ImageNet الرسمية تُحمّل مع فحص التجزئة في المرحلة6، أو تُقرأ من المخبأ/نقطة الاستكمال دون تنزيل متكرر. Quick يدرّب الرأس فقط؛ Real يثبت معظم الشبكة ويضبط آخر3 كتل بعد warmup، لتقليل الحساب مع استمرار التعلم المنقول.""")
+نفحص البنية ورأسًا ثنائيًا (real=0, fake=1). أوزان ImageNet الرسمية تُحمّل مع فحص التجزئة في المرحلة6. REAL_CPU يثبت ميزات ImageNet ويدرّب الرأس على الوجوه، وREAL يضبط آخر3 كتل. الأوزان الهندسية لا تفعّل الكشف.""")
     code('''
 from facejpeg.common import build_model
 _probe = build_model(pretrained=False)
@@ -202,12 +205,14 @@ del _probe
     md("""## 6 — التدريب مع Batch/Epoch وAMP والاستكمال
 يظهر Loss وAccuracy أثناء كل دفعة، ووقت الحقبة وETA من أدائها الفعلي، ويكتب monitor نبضة كل10ثوانٍ. تستخدم CUDA نقلًا مثبتًا وعمّال تحميل مناسبين، وAMP/GradScaler فقط على CUDA؛ التحقق والتنبؤ FP32 للحفاظ على الاتساق. Loss التدريب موزون بعدد الفئات، والتحقق BCE غير موزون؛ Accuracy التدريب online عند0.5.
 
-يُحفظ الأفضل بأقل Validation Loss، وlast.pt مع المحسن وGradScaler والعشوائية بعد كل حقبة. بعد الانقطاع تُعاد الحقبة غير المكتملة. للاستكمال احتفظ بملفي الأوزان وprepared/ كاملة وبالإعدادات نفسها، ولا تخلط البيانات. الحدود تُختار من التحقق فقط بعقوبة أكبر للاتهام الخاطئ، قبل اختبار أي جودة. الإيقاف المبكر5 حقبات دون تحسن. لا توجد مهلة زمنية ثابتة توقف تدريبًا سليمًا.""")
+يُحفظ الأفضل بأقل Validation Loss، وlast.pt مع المحسن وGradScaler والعشوائية وحالة جدولة التعلم. CPU_REAL يستخرج الميزات مرة واحدة ثم يدرّب الرأس؛ لا يعاد حساب الشبكة في كل حقبة. يخفض معدل التعلم عند توقف تحسن التحقق، ويوقف بعد8 حقبات بلا تحسن (5 في المسار العادي). بعد الانقطاع تُعاد الحقبة غير المكتملة. احتفظ بملفي الأوزان وprepared/ والإعدادات نفسها. الحدود من التحقق فقط قبل الاختبار، ولا توجد مهلة تلغي تدريبًا سليمًا.""")
     code('''
 from facejpeg.train import train
 BEST = train(PREPARED, RUN, epochs=EPOCHS, batch_size=BATCH_SIZE, quick=QUICK,
-             resume=RESUME, workers=WORKERS, allow_cpu_real=ALLOW_CPU_REAL,
-             warmup_epochs=1, finetune_blocks=3, use_amp=True)
+             resume=RESUME, workers=WORKERS, allow_cpu_real=ALLOW_CPU_REAL or CPU_REAL,
+             warmup_epochs=0 if CPU_REAL else 1, finetune_blocks=0 if CPU_REAL else 3,
+             use_amp=not CPU_REAL, cache_features=CPU_REAL, lr=1e-3 if CPU_REAL else 1e-4,
+             use_scheduler=CPU_REAL, early_stopping_patience=8 if CPU_REAL else 5)
 display(pd.read_csv(RUN / "history.csv"))
 display(DisplayImage(filename=str(RUN / "learning_curves.png")))
 print("Measured timing:", (RUN / "timing.json").read_text())
@@ -218,12 +223,12 @@ print("Measured timing:", (RUN / "timing.json").read_text())
 from facejpeg.infer import Predictor
 from facejpeg.common import read_rgb
 from facejpeg.evaluate import evaluate
-predictor = Predictor(BEST, "cpu" if QUICK else None)
-_second = Predictor(BEST, "cpu" if QUICK else None)
+predictor = Predictor(BEST, "cpu" if QUICK or CPU_REAL else None)
+_second = Predictor(BEST, "cpu" if QUICK or CPU_REAL else None)
 _example = PREPARED / manifest.loc[manifest.split == "val", "path"].iloc[0]
 assert abs(predictor.score(read_rgb(_example)) - _second.score(read_rgb(_example))) < 1e-7
 del _second
-baseline = evaluate(PREPARED, BEST, RUN / "baseline", device="cpu" if QUICK else None, qualities=["original"])
+baseline = evaluate(PREPARED, BEST, RUN / "baseline", device="cpu" if QUICK or CPU_REAL else None, qualities=["original"])
 display(baseline[["quality","binary_accuracy_at_0_5_all","binary_precision_at_0_5","binary_recall_at_0_5","binary_f1_at_0_5","roc_auc_all"]])
 print("ثبّتت الأوزان والحدود؛ لن نختارها من نتائج الاختبار التالية.")
 ''')
@@ -233,7 +238,7 @@ print("ثبّتت الأوزان والحدود؛ لن نختارها من نت�
 اكتشاف المولّد مقامه **كل المولّدات**؛ الاتهام الخاطئ مقامه **كل الفوتوغرافيات**؛ غير الحاسم مقامه **كل الاختبار**. مصفوفة2×3 تُظهره. تُحفظ ROC/AUC وF1 والتغير بالنقاط المئوية وأمثلة الأحكام المتبدلة إن وجدت، وتقرير عربي من الأرقام نفسها. عدم وجود مثال متغير يُذكر بدل اختلاقه.""")
     code('''
 RESULTS = RUN / "evaluation"
-table = evaluate(PREPARED, BEST, RESULTS, device="cpu" if QUICK else None)
+table = evaluate(PREPARED, BEST, RESULTS, device="cpu" if QUICK or CPU_REAL else None)
 display(table)
 for _figure in ["jpeg_effect.png", "confusion_matrices.png", "roc_curves.png", "changed_examples.png"]:
     if (RESULTS / _figure).exists():
@@ -275,6 +280,21 @@ else:
     nbf.validate(nb)
     for name in ["FaceJPEG_Final_Colab.ipynb", "FaceJPEG_Standalone.ipynb", "FaceJPEG_Colab.ipynb"]:
         nbf.write(nb, root / name)
+    cpu = copy.deepcopy(nb)
+    cpu.cells[0].source = """# تدريب كاشف الوجوه على CPU — بلا GPU
+هذه نسخة لتدريب صور الوجوه الفعلية، وليست اختبار الأشكال. الافتراضي MODE=REAL_CPU وSOURCE=kaggle وUSE_DRIVE=True لحفظ التقدم. يمكنك اختيار ZIP/Drive في المرحلة3. لا تحتاج GPU أو ZIP المشروع، لكن تحتاج بيانات الوجوه وتصاريحها والإنترنت لتنزيل المتطلبات.
+
+تُفحص البيانات وتقسم أولًا، ثم تُختار عينة حتى1000 صورة لكل فئة. تُستخرج ميزات MobileNetV3-Small مرة واحدة للتدريب والتحقق، ويُدرّب الرأس عليها مع جدولة التعلم وحفظ الأفضل والاستكمال. الاختبار مستقل، وتجربة JPEG تأتي بعد تثبيت النموذج والحدود.
+
+لا نَعِد بدقة معينة؛ لم يُنفّذ تدريب مجموعة الوجوه في بيئتنا بسبب حجب Kaggle. اختبرنا سلامة التخزين والحساب والاستكمال برمجيًا؛ هذا ليس قياس دقة وجوه. تدريب الرأس على عينة محدودة قد لا يعمم على مولّدات أخرى. راقب F1/AUC ومعدل الاتهام الخاطئ والتغطية بعد تجربتك.
+
+شغّل المراحل بالترتيب أو Run all بعد ضبط البيانات والسماح بتركيب Drive. التحميل والتدقيق قد يستغرقان معظم وقت أول تشغيل؛ لكل مرحلة عداد منفصل."""
+    config_cell = [c for c in cpu.cells if c.cell_type == "code"][2]
+    config_cell.source = config_cell.source.replace('MODE = "QUICK"', 'MODE = "REAL_CPU"', 1)
+    config_cell.source = config_cell.source.replace('USE_DRIVE = False', 'USE_DRIVE = True', 1)
+    cpu.metadata["colab"]["name"] = "FaceJPEG_CPU_Training.ipynb"
+    nbf.validate(cpu)
+    nbf.write(cpu, root / "FaceJPEG_CPU_Training.ipynb")
     print(f"Final notebook and compatibility copies: {(root/'FaceJPEG_Final_Colab.ipynb').stat().st_size:,} bytes")
 
 

@@ -1,5 +1,7 @@
 # كشف صور الوجوه المولّدة بالذكاء الاصطناعي ودراسة أثر ضغط JPEG
 
+**بلا GPU:** افتح [دفتر تدريب الوجوه على CPU](https://colab.research.google.com/github/Aishaas1/Final-Projects/blob/main/FaceJPEG_CPU_Training.ipynb). يبدأ بـMODE=REAL_CPU، ويخزن ميزات الصور مرة واحدة ثم يدرّب الرأس على بيانات وجوه فعلية. يحتاج البيانات؛ لا يحتوي أوزان كشف وجوه مدرّبة مسبقًا. [شرح مسار CPU وحدود التحقق](docs/CPU_TRAINING_AR.md).
+
 [افتح الدفتر النهائي في Google Colab](https://colab.research.google.com/github/Aishaas1/Final-Projects/blob/main/FaceJPEG_Final_Colab.ipynb) · [تقرير المراجعة والإصلاحات](docs/REVIEW_AND_FIXES_AR.md) · [إصلاح أحكام QUICK المضللة](docs/INFERENCE_FIX_AR.md) · [بطاقة البيانات والحقوق](docs/DATASET_CARD_AR.md)
 
 المشروع يستخدم Python وPyTorch وMobileNetV3-Small وواجهة Gradio عربية. يقارن فوتوغرافيات الوجوه بوجوه مولّدة بالكامل؛ لا يدّعي كشف كل أنواع التزييف أو تبديل الوجوه. القرار ثلاثي: «يرجّح أنها صورة فوتوغرافية»، «يرجّح أنها مولّدة بالذكاء الاصطناعي»، «النتيجة غير حاسمة». درجات الفئتين ترجيحات غير معايرة، وليست دليل أصالة.
@@ -10,7 +12,7 @@
 
 1. افتح `FaceJPEG_Final_Colab.ipynb` من الرابط أعلاه. في أول تجربة أبقِ `MODE="QUICK"` ثم اختر **Runtime → Run all**. الدفتر مستقل ويكتب الكود المضمن في مجلد إصدار منفصل؛ لا يطلب ZIP المشروع.
 2. المراحل1–9 تفحص البيئة وتثبت المتطلبات وتجهز العينة وتدرّب وتحفظ وتقيّم وتصدّر النتائج. المرحلة10 تفتح Gradio؛ ارفع صورة واحدة واضحة واختر جودة JPEG. في QUICK تظهر معاينة JPEG فقط وعبارة «كشف الأصالة غير متاح»، دون درجات أو حكم على الوجه. التدريب الهندسي لا يفعّل الكشف.
-3. للتدريب الحقيقي، فعّل GPU من **Runtime → Change runtime type → GPU**، ثم عدّل إعدادات المرحلة3 كما يلي، وحدّد البيانات قبل Run all.
+3. للتدريب الحقيقي، فعّل GPU من **Runtime → Change runtime type → GPU**، أو اختر دفتر REAL_CPU بلا GPU، ثم عدّل إعدادات المرحلة3 كما يلي، وحدّد البيانات قبل Run all.
 
 ```python
 MODE = "REAL"

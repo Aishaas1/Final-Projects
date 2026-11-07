@@ -13,6 +13,7 @@ from tqdm.auto import tqdm
 from .common import (CLASSES, PREPROCESS, atomic_torch_save, build_model, decisions,
                      file_sha256, read_rgb, seed_everything, tensorize, write_json)
 from .data import validate_manifest
+from .features import FeatureRows, cached_features
 from .runtime import Monitor, choose_batch_size, hardware_info, loader_options
 
 
@@ -106,18 +107,21 @@ def save_learning_curves(history, out, run_label):
 
 def train(prepared, output, epochs=10, batch_size=None, lr=1e-4, quick=False, resume=True,
           pretrained=True, seed=42, warmup_epochs=1, finetune_blocks=3, use_amp=True,
-          workers=None, allow_cpu_real=False):
+          workers=None, allow_cpu_real=False, cache_features=False, use_scheduler=False,
+          early_stopping_patience=5):
     with Monitor(output) as monitor:
         try:
             return _train(prepared, output, epochs, batch_size, lr, quick, resume, pretrained,
-                          seed, warmup_epochs, finetune_blocks, use_amp, workers, allow_cpu_real, monitor)
+                          seed, warmup_epochs, finetune_blocks, use_amp, workers, allow_cpu_real,
+                          cache_features, use_scheduler, early_stopping_patience, monitor)
         except torch.cuda.OutOfMemoryError as exc:
             raise RuntimeError("نفدت ذاكرة GPU. اختر BATCH_SIZE أصغر واسم تجربة جديد، وأغلق النماذج الأخرى. لم يُعد التدريب تلقائيًا على CPU.") from exc
 
 
 def _train(prepared, output, epochs, batch_size, lr, quick, resume, pretrained, seed,
-           warmup_epochs, finetune_blocks, use_amp, workers, allow_cpu_real, monitor):
-    if epochs < 1 or lr <= 0 or finetune_blocks < -1 or warmup_epochs < 0:
+           warmup_epochs, finetune_blocks, use_amp, workers, allow_cpu_real,
+           cache_features, use_scheduler, early_stopping_patience, monitor):
+    if epochs < 1 or lr <= 0 or finetune_blocks < -1 or warmup_epochs < 0 or early_stopping_patience < 1:
         raise ValueError("Invalid epochs/lr/transfer-learning configuration")
     seed_everything(seed)
     torch.set_num_threads(min(4, torch.get_num_threads()))
@@ -127,7 +131,9 @@ def _train(prepared, output, epochs, batch_size, lr, quick, resume, pretrained, 
     audit = json.loads((root / "audit.json").read_text())
     if not quick and audit["data_kind"] == "procedural_fixture":
         raise ValueError("Real Training لا يقبل بيانات fixture. اختر بيانات وجوه أو Quick Test.")
-    device = "cuda" if torch.cuda.is_available() and not quick else "cpu"
+    device = "cuda" if torch.cuda.is_available() and not quick and not cache_features else "cpu"
+    if cache_features and (finetune_blocks != 0 or warmup_epochs != 0):
+        raise ValueError("Cached CPU training requires finetune_blocks=0 and warmup_epochs=0")
     if not quick and device == "cpu" and not allow_cpu_real:
         raise RuntimeError("Real Training يحتاج GPU افتراضيًا. فعّل GPU في Colab، أو اختر Quick Test. للسماح الواعي بتدريب CPU البطيء مرّر allow_cpu_real=True.")
     batch_size = batch_size or choose_batch_size(quick)
@@ -145,13 +151,18 @@ def _train(prepared, output, epochs, batch_size, lr, quick, resume, pretrained, 
         raise ValueError("Resume requires identical manifest, mode and seed; choose new output")
     legacy = bool(previous and "training_config" not in previous)
     if legacy:
+        if cache_features or use_scheduler:
+            raise ValueError("Legacy checkpoint has a different strategy; choose a new experiment for cached CPU training")
         # Keep old checkpoint optimizer layout; never silently discard its optimizer.
         warmup_epochs, finetune_blocks = 0, -1
         monitor.event("استكمال checkpoint قديم بإعدادات التجميد الأصلية؛ لا تُقارن الأزمنة بتشغيل جديد.")
     config = {"batch_size": batch_size, "lr": lr, "warmup_epochs": 0 if quick else warmup_epochs,
               "finetune_blocks": 0 if quick else finetune_blocks, "amp": bool(use_amp and device == "cuda"),
-              "workers": loader_options(device, quick, workers)["num_workers"]}
-    if previous and previous.get("training_config") and previous["training_config"] != config:
+              "workers": loader_options(device, quick, workers)["num_workers"],
+              "cache_features": bool(cache_features), "use_scheduler": bool(use_scheduler),
+              "early_stopping_patience": early_stopping_patience}
+    defaults = {"cache_features": False, "use_scheduler": False, "early_stopping_patience": 5}
+    if previous and previous.get("training_config") and {**defaults, **previous["training_config"]} != config:
         raise ValueError("Resume settings changed (batch/lr/AMP/transfer/workers); restore original config or use a new experiment")
     monitor.stage("تحميل MobileNetV3 والأوزان الرسمية")
     model = build_model(pretrained=pretrained and previous is None).to(device)
@@ -163,11 +174,17 @@ def _train(prepared, output, epochs, batch_size, lr, quick, resume, pretrained, 
     if legacy and not quick:
         parameters = list(model.parameters())
     optimizer = torch.optim.AdamW(parameters, lr=lr, weight_decay=.01)
+    scheduler = (torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode="min", factor=.5,
+                 patience=2, min_lr=1e-6) if use_scheduler else None)
     scaler = torch.amp.GradScaler("cuda", enabled=config["amp"])
     start, best_loss, stale, history = 0, float("inf"), 0, []
     if previous:
         model.load_state_dict(previous["model_state"])
         optimizer.load_state_dict(previous["optimizer_state"])
+        if scheduler:
+            if not previous.get("scheduler_state"):
+                raise ValueError("Scheduler state missing; start a new experiment instead of guessing it")
+            scheduler.load_state_dict(previous["scheduler_state"])
         if previous.get("scaler_state"):
             scaler.load_state_dict(previous["scaler_state"])
         start, best_loss = previous["epoch"] + 1, previous["best_val_loss"]
@@ -180,7 +197,22 @@ def _train(prepared, output, epochs, batch_size, lr, quick, resume, pretrained, 
             raise FileNotFoundError("Copy both best.pt and last.pt to resume")
     train_frame, val_frame = frame[frame.split == "train"], frame[frame.split == "val"]
     options = loader_options(device, quick, workers)
-    val_loader = DataLoader(Faces(val_frame, root), batch_size=batch_size, **options,
+    forward_model = model
+    train_dataset = Faces(train_frame, root, augment=not quick)
+    val_dataset = Faces(val_frame, root)
+    if cache_features:
+        cache, cache_path = cached_features(model, frame, root, out, PREPROCESS, monitor,
+                                            batch_size=min(batch_size, 16))
+        forward_model = model.classifier
+        train_dataset = FeatureRows(cache["train_original"], cache["train_labels"],
+                                    cache["train_flipped"], augment=not quick)
+        val_dataset = FeatureRows(cache["val_original"], cache["val_labels"])
+        write_json(out / "feature_cache_info.json", {"file": cache_path.name,
+            "metadata": cache["metadata"], "test_images_cached": False,
+            "backbone_frozen": True, "feature_dimension": int(cache["train_original"].shape[1]),
+            "cache_reused": cache["cache_reused"],
+            "extraction_seconds_when_built": cache.get("extraction_seconds_when_built")})
+    val_loader = DataLoader(val_dataset, batch_size=batch_size, **options,
                             generator=torch.Generator().manual_seed(seed + 100000), worker_init_fn=seed_worker)
     counts = train_frame.label.value_counts()
     loss_fn = torch.nn.BCEWithLogitsLoss(pos_weight=torch.tensor(float(counts[0] / counts[1]), device=device))
@@ -188,9 +220,10 @@ def _train(prepared, output, epochs, batch_size, lr, quick, resume, pretrained, 
             "preprocess": PREPROCESS, "thresholds": None, "manifest_sha256": manifest_hash,
             "seed": seed, "quick": quick, "data_kind": audit["data_kind"], "training_config": config,
             "pretrained": previous["pretrained"] if previous else pretrained,
-            "run_label": "SMOKE_ONLY_NOT_A_FACE_DETECTOR" if audit["data_kind"] == "procedural_fixture" else "QUICK_SUBSET" if quick else "REAL_TRAINING"}
+            "run_label": "SMOKE_ONLY_NOT_A_FACE_DETECTOR" if audit["data_kind"] == "procedural_fixture" else
+                         "QUICK_SUBSET" if quick else "REAL_CPU_FROZEN_BACKBONE" if cache_features else "REAL_TRAINING"}
     for epoch in range(start, epochs):
-        if stale >= 5:
+        if stale >= early_stopping_patience:
             monitor.event("تحقق الإيقاف المبكر سابقًا؛ نعيد تحميل الأفضل دون استئناف غير مقصود")
             break
         tick = time.monotonic()
@@ -203,7 +236,7 @@ def _train(prepared, output, epochs, batch_size, lr, quick, resume, pretrained, 
             for block in selected:
                 block.train()
         gen = torch.Generator().manual_seed(seed + epoch)
-        loader = DataLoader(Faces(train_frame, root, augment=not quick), batch_size=batch_size,
+        loader = DataLoader(train_dataset, batch_size=batch_size,
                             shuffle=True, generator=gen, worker_init_fn=seed_worker, **options)
         monitor.stage(f"تدريب Epoch {epoch+1}/{epochs}" + (" — warmup head" if warming else ""), len(train_frame))
         total, correct, seen = 0., 0, 0
@@ -212,7 +245,7 @@ def _train(prepared, output, epochs, batch_size, lr, quick, resume, pretrained, 
             x, y = x.to(device, non_blocking=True), y.to(device, non_blocking=True)
             optimizer.zero_grad(set_to_none=True)
             with torch.autocast(device_type=device, dtype=torch.float16, enabled=config["amp"]):
-                logits = model(x).flatten()
+                logits = forward_model(x).flatten()
                 loss = loss_fn(logits, y)
             if not torch.isfinite(loss):
                 raise FloatingPointError("Non-finite loss; no invalid checkpoint saved")
@@ -227,7 +260,7 @@ def _train(prepared, output, epochs, batch_size, lr, quick, resume, pretrained, 
             bar.set_postfix(loss=f"{total/seen:.4f}", accuracy=f"{correct/seen:.3f}")
             monitor.advance(len(y), f"Epoch {epoch+1} batch {batch}/{len(loader)} saved in memory")
         monitor.stage(f"تحقق Epoch {epoch+1}/{epochs}", len(val_frame))
-        yval, sval, val_loss = predict_loader(model, val_loader, device, monitor)
+        yval, sval, val_loss = predict_loader(forward_model, val_loader, device, monitor)
         if not np.isfinite(val_loss) or not np.isfinite(sval).all():
             raise FloatingPointError("Non-finite validation result; checkpoint was not saved")
         seconds = time.monotonic() - tick
@@ -235,7 +268,11 @@ def _train(prepared, output, epochs, batch_size, lr, quick, resume, pretrained, 
                   "train_accuracy_at_0_5": correct / seen,
                   "val_accuracy_at_0_5": float(((sval >= .5).astype(int) == yval).mean()),
                   "epoch_seconds": seconds, "train_images_per_second": seen / seconds,
+                  "learning_rate_used": float(optimizer.param_groups[0]["lr"]),
                   "eta_remaining_epochs_seconds": seconds * (epochs - epoch - 1)}
+        if scheduler:
+            scheduler.step(val_loss)
+        record["learning_rate_next"] = float(optimizer.param_groups[0]["lr"])
         history.append(record)
         monitor.stage("حفظ checkpoint ونتائج الحقبة")
         if val_loss < best_loss:
@@ -245,7 +282,8 @@ def _train(prepared, output, epochs, batch_size, lr, quick, resume, pretrained, 
         else:
             stale += 1
         atomic_torch_save({**base, "model_state": model.state_dict(), "optimizer_state": optimizer.state_dict(),
-            "scaler_state": scaler.state_dict(), "epoch": epoch, "best_val_loss": best_loss,
+            "scaler_state": scaler.state_dict(), "scheduler_state": scheduler.state_dict() if scheduler else {},
+            "epoch": epoch, "best_val_loss": best_loss,
             "stale": stale, "history": history, "torch_rng": torch.get_rng_state(),
             "python_rng": random.getstate(), "cuda_rng": torch.cuda.get_rng_state_all() if device == "cuda" else []}, last_path)
         pd.DataFrame(history).to_csv(out / "history.csv", index=False)
@@ -255,7 +293,7 @@ def _train(prepared, output, epochs, batch_size, lr, quick, resume, pretrained, 
     monitor.stage("اختيار الحدود من التحقق فقط", len(val_frame))
     best = torch.load(best_path, map_location="cpu", weights_only=True)
     model.load_state_dict(best["model_state"])
-    y, s, _ = predict_loader(model, val_loader, device, monitor)
+    y, s, _ = predict_loader(forward_model, val_loader, device, monitor)
     thresholds, grid = select_thresholds(y, s)
     best["thresholds"] = thresholds
     best["threshold_selection"] = "validation_only_utility_correct1_falseaccusation-4_missedfake-1_abstain0"
@@ -268,7 +306,9 @@ def _train(prepared, output, epochs, batch_size, lr, quick, resume, pretrained, 
     epoch_times = [r["epoch_seconds"] for r in history if "epoch_seconds" in r]
     write_json(out / "timing.json", {"device": device, "run_label": best["run_label"],
         "measured_epoch_seconds": epoch_times, "mean_epoch_seconds": float(np.mean(epoch_times)) if epoch_times else None,
-        "scope": "training plus validation; excludes download/audit/checkpoint writes",
+        "scope": "training plus validation; excludes download/audit/checkpoint writes" +
+                 (" and one-time backbone feature extraction; see feature_cache_info.json" if cache_features else ""),
+        "cached_feature_training": bool(cache_features),
         "gpu_estimate": "not measured" if device == "cpu" else "measured on this GPU only"})
     monitor.event(f"أفضل نموذج وحدود التحقق جاهزة: {best_path}")
     return best_path
@@ -283,6 +323,10 @@ if __name__ == "__main__":
     p.add_argument("--quick", action="store_true")
     p.add_argument("--no-resume", action="store_true")
     p.add_argument("--allow-cpu-real", action="store_true")
+    p.add_argument("--cache-features", action="store_true")
+    p.add_argument("--scheduler", action="store_true")
     a = p.parse_args()
     train(a.prepared, a.output, a.epochs, a.batch_size, quick=a.quick,
-          resume=not a.no_resume, allow_cpu_real=a.allow_cpu_real)
+          resume=not a.no_resume, allow_cpu_real=a.allow_cpu_real or a.cache_features, cache_features=a.cache_features,
+          finetune_blocks=0 if a.cache_features else 3, warmup_epochs=0 if a.cache_features else 1,
+          use_scheduler=a.scheduler)
