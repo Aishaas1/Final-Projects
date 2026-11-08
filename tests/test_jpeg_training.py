@@ -151,7 +151,10 @@ def test_jpeg_notebook_is_self_contained_and_keeps_test_after_both_models():
     assert len(code) == 10
     for index, source in enumerate(code):
         compile(source, f"jpeg_notebook_stage_{index+1}", "exec")
-    assert 'USE_DRIVE = False' in code[2] and 'MODE = "QUICK"' in code[2]
+    assert 'USE_DRIVE = False' in code[2] and 'MODE = "REAL_CPU"' in code[2]
+    smoke = nbformat.read("FaceJPEG_JPEG_Smoke_Test.ipynb", as_version=4)
+    smoke_code = [cell.source for cell in smoke.cells if cell.cell_type == "code"]
+    assert 'MODE = "QUICK"' in smoke_code[2] and 'ALLOW_SOFTWARE_PREVIEW = True' in smoke_code[2]
     assert "fit_jpeg_comparison(" in code[5] and "evaluate(" not in code[5]
     assert "evaluate(" not in code[6] and "evaluate_jpeg_comparison(" in code[7]
     assert '"feature_cache" not in' in code[8]

@@ -1,4 +1,4 @@
-"""Execute all final notebook stages locally, with Gradio launch disabled.
+"""Execute the explicit software-test notebook locally, with Gradio disabled.
 
 Run from the extracted project root in its installed environment. This validates
 the default CPU fixture workflow; it does NOT emulate Colab uploads or Drive.
@@ -19,7 +19,7 @@ import IPython.display as ipdisplay
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", default="artifacts/review/notebook")
-    parser.add_argument("--notebook", default="FaceJPEG_Final_Colab.ipynb")
+    parser.add_argument("--notebook", default="FaceJPEG_JPEG_Smoke_Test.ipynb")
     args = parser.parse_args()
     project_root = Path.cwd().resolve()
     output = (project_root / args.output).resolve()
@@ -52,6 +52,8 @@ def main():
             stream = io.StringIO()
             with contextlib.redirect_stdout(stream), contextlib.redirect_stderr(stream):
                 exec(compile(cell.source, f"notebook_stage_{len(completed)+1}", "exec"), namespace)
+                if len(completed) == 2 and not namespace.get("QUICK"):
+                    raise ValueError("Local fixture validation requires FaceJPEG_JPEG_Smoke_Test.ipynb; no real-data training was attempted")
             if stream.getvalue():
                 current.outputs.insert(0, nbformat.v4.new_output("stream", name="stdout", text=stream.getvalue()))
             current.execution_count = len(completed) + 1
@@ -59,6 +61,8 @@ def main():
             print(f"Notebook stage {len(completed)} passed", flush=True)
     finally:
         ipdisplay.display = original_display
+    if not namespace.get("TRAINING_READY", False):
+        raise RuntimeError("Software-test training did not complete; no successful validation record was written")
     nbformat.validate(notebook)
     nbformat.write(notebook, output / "executed_quick.ipynb")
     record = {"executed_locally": completed, "source": "fixture", "quick": True,

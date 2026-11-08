@@ -85,9 +85,9 @@ def test_cpu_notebook_configuration_runs_without_gpu(tmp_path, monkeypatch):
     nbformat.validate(nb)
     cells = [c.source for c in nb.cells if c.cell_type == "code"]
     assert len(cells) == 10 and 'MODE = "REAL_CPU"' in cells[2]
-    assert 'USE_DRIVE = True' in cells[2]
+    assert 'USE_DRIVE = False' in cells[2]
     # Test config without Drive OAuth; does not claim hosted Colab or actual face training.
-    source = cells[2].replace("USE_DRIVE = True", "USE_DRIVE = False")
+    source = cells[2]
     monkeypatch.setattr(torch.cuda, "is_available", lambda: False)
     scope = {"torch": torch, "os": __import__("os"), "Path": Path, "PROJECT": tmp_path, "IN_COLAB": False}
     exec(compile(source, "cpu_config", "exec"), scope)

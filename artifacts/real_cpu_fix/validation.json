@@ -1,0 +1,42 @@
+{
+  "version": "2.3.1",
+  "tests_passed": 59,
+  "warnings": 18,
+  "test_seconds": 19.63,
+  "default_training_mode": "REAL_CPU",
+  "default_use_drive": false,
+  "software_test_in_separate_notebook": true,
+  "missing_data_does_not_fall_back_to_shapes": true,
+  "missing_data_stops_dependent_stages_without_traceback": true,
+  "stale_or_corrupt_weights_rejected_before_interface": true,
+  "notebook_stages_executed": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10
+  ],
+  "executed_notebook": "FaceJPEG_JPEG_Smoke_Test.ipynb",
+  "genuine_face_training_performed": false,
+  "face_accuracy_measured": false,
+  "hosted_colab_tested": false,
+  "gpu_tested": false,
+  "drive_oauth_tested": false,
+  "software_weights": {
+    "baseline": {
+      "file": "artifacts/jpeg_training/quick/baseline/best.pt",
+      "sha256": "a819d2f37e0071abc916daa0e0c99c438e5d9a2032c219178dc071878866b167",
+      "kind": "procedural software-test weights only"
+    },
+    "jpeg_augmented": {
+      "file": "artifacts/jpeg_training/quick/jpeg_augmented/best.pt",
+      "sha256": "97a79a84b754d03d8b7e5c9c433f986cac193c5127d80e6005f0522f6fd521f5",
+      "kind": "procedural software-test weights only"
+    }
+  }
+}

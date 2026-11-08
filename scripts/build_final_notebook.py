@@ -9,15 +9,92 @@ from pathlib import Path
 import nbformat as nbf
 
 
+def configure_face_training_flow(notebook, software_test=False):
+    """Invalidate stale state, handle missing data, and verify weights before UI."""
+    code_cells = [cell for cell in notebook.cells if cell.cell_type == "code"]
+    mode = 'MODE = "QUICK"  # @param ["QUICK"]' if software_test else 'MODE = "REAL_CPU"  # @param ["REAL_CPU", "REAL"]'
+    code_cells[2].source = "\n".join(mode if line.startswith("MODE = ") else line
+                                      for line in code_cells[2].source.splitlines())
+    code_cells[2].source = ('''BEST = None
+CHECKPOINTS = {}
+TRAINING_READY = False
+DATA_READY = False
+manifest = None
+if globals().get("demo") is not None:
+    demo.close()
+demo = None
+''' + f"ALLOW_SOFTWARE_PREVIEW = {software_test!r}\n" + code_cells[2].source)
+
+    def guarded(source, flag, message):
+        return f'if not globals().get({flag!r}, False):\n    print({message!r})\nelse:\n' + "\n".join(
+            "    " + line for line in source.splitlines())
+
+    code_cells[3].source = ('''from zipfile import BadZipFile
+DATA_READY = False
+TRAINING_READY = False
+BEST = None
+CHECKPOINTS = {}
+manifest = None
+if globals().get("demo") is not None:
+    demo.close()
+demo = None
+try:
+''' + "\n".join("    " + line for line in code_cells[3].source.splitlines()) + '''
+    DATA_READY = True
+except (OSError, ValueError, RuntimeError, BadZipFile) as _data_error:
+    print("⚠️ لم تجهز بيانات الوجوه؛ لن يبدأ التدريب أو التقييم أو كشف الأصالة.")
+    print("السبب:", str(_data_error))
+    print("للمتابعة: ارفع ZIP بيانات به real وfake من لوحة Files، ثم اختر SOURCE='zip' وحدد DATA_ZIP في المرحلة3 وأعد3 ثم4. أو أصلح الوصول إلى Kaggle. لا يوجد انتقال تلقائي إلى QUICK.")
+''')
+    code_cells[5].source = ("TRAINING_READY = False\nBEST = None\nCHECKPOINTS = {}\n" + guarded(
+        code_cells[5].source + "\nTRAINING_READY = True", "DATA_READY",
+        "لم يبدأ التدريب: أكمل تجهيز بيانات الفئتين في المرحلة4 أولًا."))
+    for number in [7, 8, 9]:
+        code_cells[number - 1].source = guarded(code_cells[number - 1].source, "TRAINING_READY",
+            "لم تكتمل المرحلة6؛ لن نحسب نتائج اختبار أو نصدر أوزانًا غير جاهزة. أكمل تدريب الوجوه أولًا.")
+    code_cells[9].source = '''import pickle
+from facejpeg.infer import Predictor
+from app import create_app
+if globals().get("demo") is not None:
+    demo.close()
+def _verified_interface():
+    if not globals().get("TRAINING_READY", False) or not globals().get("BEST"):
+        print("الواجهة غير جاهزة للكشف: أكمل تجهيز البيانات في4 والتدريب في6. لم نحمّل أوزان QUICK بدلًا من نموذج الوجوه.")
+        return None
+    try:
+        _checked = Predictor(BEST, "cpu")
+        _faces_enabled = _checked.face_classification_enabled
+        del _checked
+    except (ValueError, OSError, RuntimeError, EOFError, KeyError, TypeError, pickle.UnpicklingError):
+        print("تعذر تحميل best.pt صالح. أعد تحميل أوزان تجربة الوجوه السليمة أو أكمل المرحلة6.")
+        return None
+    if not _faces_enabled and not ALLOW_SOFTWARE_PREVIEW:
+        print("رُفض فتح الواجهة بأوزان هندسية: اختر best.pt من تدريب REAL_CPU على بيانات وجوه فعلية. تغيير اسم الملف لا يكفي.")
+        return None
+    if not LAUNCH_UI:
+        print("تشغيل الواجهة معطّل للفحص غير التفاعلي؛ اجعل LAUNCH_UI=True عند الحاجة.")
+        return None
+    return create_app(BEST)
+demo = _verified_interface()
+if demo is not None:
+    demo.launch(share=SHARE_GRADIO if IN_COLAB else False, debug=False)
+'''
+    notebook.cells[7].source += "\n\nعند تعذر التحميل تظهر رسالة عربية وخطوات ZIP؛ تُتخطى المراحل المعتمدة على البيانات حتى إصلاح المصدر وإعادة المرحلة3 ثم4. لا يُستبدل مصدر الوجوه بعينة أشكال تلقائيًا."
+    notebook.cells[19].source = """## 10 — فتح الواجهة بعد التحقق من أوزان الوجوه
+تُفتح الواجهة بعد اكتمال المرحلة6 فقط. يفحص الدفتر ملف best.pt فعليًا، ويرفض الأوزان الهندسية أو الأوزان التالفة بدل استخدامها لكشف الوجوه. عند تغيير الإعدادات في المرحلة3 تُغلق الواجهة القديمة ويُلغى اختيار النموذج السابق. لذلك لا يعيد خطأ التنزيل فتح نموذج QUICK قديم.
+
+بعد التدريب ارفع JPG/PNG لوجه أمامي واحد واضح، واختر جودة JPEG. كل صورة جديدة تحتاج زر التحليل فقط. الرابط مؤقت مع جلسة Colab. للاستعمال لاحقًا احتفظ بـbest.pt وافتح دفتر التنبؤ فقط. في دفتر اختبار البرمجيات المنفصل يسمح بعرض JPEG دون أحكام أصالة، وموسوم بذلك بوضوح."""
+
+
 def build_jpeg_notebook(root, source):
     notebook = copy.deepcopy(source)
     notebook.metadata["colab"]["name"] = "FaceJPEG_JPEG_Training.ipynb"
-    notebook.cells[0].source = """# FaceJPEG 2.3 — تدريب JPEG ومقارنته بالتدريب الأساسي
-دفتر مستقل من10 مراحل، يعمل بلا GPU. لأول فحص شغّل Run all بالإعداد QUICK: أشكال هندسية فقط، لا نتائج كشف وجوه. لتدريب الوجوه اختر MODE=REAL_CPU في المرحلة3 ووفر بيانات الفئتين. لا توجد أوزان كشف وجوه مدربة مضمنة، ولا نعد بتحسن الدقة.
+    notebook.cells[0].source = """# FaceJPEG 2.3.1 — تدريب الوجوه على CPU ومقارنة JPEG
+الافتراضي الآن MODE=REAL_CPU؛ لا حاجة لتعديله من QUICK. يعمل دون GPU ودون تركيب Drive افتراضيًا. يحتاج تنزيل بيانات وجوه فوتوغرافية ومولدة عبر Kaggle أو ZIP/Drive. الكود مستقل ومضمن، لكن لا توجد أوزان كشف وجوه مدربة مضمنة، ولا نعد بدقة معينة. لا تُفتح واجهة الكشف قبل اكتمال التدريب وتحميل أوزان وجوه صالحة.
 
 التجربة A تدرب نموذجًا أساسيًا، وB تستخدم JPEG عشوائيًا لصور التدريب فقط باحتمال0.5 وجودات90/70/50/30. نفس التقسيم والبذرة وإعدادات التدريب؛ التحقق يبقى أصليًا. يُختار أفضل نموذج وحدوده لكل تجربة من التحقق، ويُثبت النموذجان قبل فتح الاختبار. كل جودة اختبار مستقلة من الأصل، وحدود كل نموذج ثابتة عبر الجودات.
 
-QUICK يختبر أيضًا حفظ ميزات JPEG والاستكمال، لكن حكم الأصالة معطّل في الواجهة. بعد REAL_CPU يظهر الحكم الثلاثي. اقرأ قبل كل مرحلة، واحتفظ بـbest.pt والنتائج على جهازك أو Drive قبل انتهاء الجلسة. USE_DRIVE=False افتراضيًا لتجنب اعتماد التشغيل على مصادقة Drive؛ فعّله إن رغبت في الحفظ الدائم. تغيير MODE أو اسم الوزن وحده لا يدرّب الوجوه."""
+للتجربة البرمجية السريعة فقط يوجد دفتر منفصل FaceJPEG_JPEG_Smoke_Test.ipynb؛ أوزانه هندسية وليست كاشف وجوه. اقرأ قبل كل مرحلة، واحتفظ بـbest.pt والنتائج على جهازك أو Drive قبل انتهاء الجلسة. USE_DRIVE=False افتراضيًا لتجنب اعتماد التشغيل على مصادقة Drive؛ فعّله إن رغبت في الحفظ الدائم. تغيير MODE أو اسم الوزن وحده لا يدرّب الوجوه."""
     code_cells = [cell for cell in notebook.cells if cell.cell_type == "code"]
 
     def stage(number, markdown=None, code=None):
@@ -27,11 +104,11 @@ QUICK يختبر أيضًا حفظ ميزات JPEG والاستكمال، لكن
             code_cells[number - 1].source = code.strip()
 
     code_cells[2].source = "\n".join(
-        'EXPERIMENT = "jpeg_quick_v2_3" if MODE == "QUICK" else "jpeg_faces_cpu_v2_3" if MODE == "REAL_CPU" else "jpeg_faces_gpu_v2_3"'
+        'EXPERIMENT = "jpeg_quick_v2_3_1" if MODE == "QUICK" else "jpeg_faces_cpu_v2_3_1" if MODE == "REAL_CPU" else "jpeg_faces_gpu_v2_3_1"'
         if line.startswith("EXPERIMENT = ") else line for line in code_cells[2].source.splitlines()
     ) + '\nJPEG_TRAIN_QUALITIES = [90, 70, 50, 30]\nJPEG_PROBABILITY = 0.5\nMODEL_FOR_UI = "jpeg_augmented"  # أو baseline؛ اختيار محدد مسبقًا، لا فائز تلقائيًا\n'
     stage(3, markdown="""## 3 — الإعدادات ومصدر البيانات والحفظ
-QUICK اختبار برمجي بأشكال، وREAL_CPU تدريب وجوه بلا GPU، وREAL لضبط آخر طبقات الشبكة على GPU. اختر المصدر kaggle أو ZIP أو Drive. ضع ZIP البيانات في لوحة Files واكتب مساره في DATA_ZIP، أو جهّز مجلد real وfake على Drive. اترك USE_DRIVE=False إذا تعذرت مصادقته، ونزّل النتائج لاحقًا من المرحلة9.
+الافتراضي REAL_CPU لتدريب الوجوه بلا GPU، وREAL لضبط آخر طبقات الشبكة على GPU. اختبار QUICK له دفتر منفصل. اختر المصدر kaggle أو ZIP أو Drive. ضع ZIP البيانات في لوحة Files واكتب مساره في DATA_ZIP، أو جهّز مجلد real وfake على Drive. اترك USE_DRIVE=False إذا تعذرت مصادقته، ونزّل النتائج لاحقًا من المرحلة9.
 
 JPEG_PROBABILITY=0.5 يعني أن كل زيارة لصورة تدريب تختار نسخة JPEG باحتمال50%، وتختار جودة عشوائية بالتساوي من القائمة. البقية تستخدم الأصل؛ القلب الأفقي له السياسة نفسها في A وB. على CPU تُستخرج ميزات الأصل والنسخ المضغوطة مرة واحدة ثم تُختار عشوائيًا كل حقبة. تغيير جودة الواجهة وحده لا يغيّر التدريب.
 
@@ -96,8 +173,18 @@ display(Markdown((RUN / "COMPARISON_AR.md").read_text()))
 يتضمن ZIP أفضل وlast.pt لكل نموذج والخطة والبصمات والتقارير وmanifest. يستبعد ميزات CPU القابلة لإعادة الحساب، وصور prepared افتراضيًا لتقليل زمن الضغط. لاستكمال التدريب احتفظ بمجلد RUN كاملًا على Drive، أو فعّل EXPORT_INCLUDE_PREPARED=True للاحتفاظ بصور الاستكمال في ZIP.
 
 بعد اكتمال الخلية نزّل ZIP من لوحة Files في Colab؛ لا يُنزَّل تلقائيًا. للتنبؤ لاحقًا استخدم best.pt من تجربة وجوه فعلية (داخل baseline أو jpeg_augmented)، واحتفظ بمعالجة الصورة والحدود المحفوظة. حفظ الدفتر وحده لا يحفظ الأوزان.""")
+    smoke = copy.deepcopy(notebook)
+    smoke.metadata["colab"]["name"] = "FaceJPEG_JPEG_Smoke_Test.ipynb"
+    smoke.cells[0].source = """# اختبار برمجيات JPEG فقط — ليس كاشف وجوه
+الافتراضي QUICK: أشكال هندسية للتأكد من التدريب والحفظ والاستكمال والمقارنة. لا تستخدم درجاته أو أوزانه لكشف أصالة وجوه. الواجهة تسمح بمعاينة JPEG دون أحكام أصالة. لتدريب الوجوه استخدم FaceJPEG_Real_CPU_Ready.ipynb الذي يبدأ بـREAL_CPU ويتطلب بيانات وجوه فعلية."""
+    configure_face_training_flow(smoke, software_test=True)
+    nbf.validate(smoke)
+    nbf.write(smoke, root / "FaceJPEG_JPEG_Smoke_Test.ipynb")
+    configure_face_training_flow(notebook)
     nbf.validate(notebook)
     nbf.write(notebook, root / "FaceJPEG_JPEG_Training.ipynb")
+    notebook.metadata["colab"]["name"] = "FaceJPEG_Real_CPU_Ready.ipynb"
+    nbf.write(notebook, root / "FaceJPEG_Real_CPU_Ready.ipynb")
 
 
 def build():
@@ -119,10 +206,10 @@ def build():
         cells.append(nbf.v4.new_code_cell(s.strip()))
 
     md("""# FaceJPEG — كشف الوجوه المولّدة ودراسة أثر JPEG
-## دفتر نهائي مستقل، الإصدار 2.3
-الكود مضمن هنا؛ **لا تحتاج ZIP المشروع**. QUICK اختبار أشكال هندسية وواجهة JPEG بلا أحكام أصالة. لتدريب الوجوه اختر REAL على GPU أو REAL_CPU بلا GPU، ثم وفّر البيانات ودرّب النموذج. تغيير MODE وحده لا يكفي، ولا توجد أوزان كشف وجوه حقيقية مضمّنة.
+## دفتر نهائي مستقل، الإصدار 2.3.1
+الكود مضمن هنا؛ **لا تحتاج ZIP المشروع**. الافتراضي REAL_CPU لتدريب الوجوه بلا GPU. تحتاج بيانات وجوه فوتوغرافية ومولدة؛ لا توجد أوزان كشف وجوه مدربة مضمنة. يتوفر اختبار QUICK الهندسي في دفتر منفصل FaceJPEG_JPEG_Smoke_Test.ipynb فقط لغرض التحقق البرمجي.
 
-في أول تجربة شغّل Runtime → Run all بالإعدادات الافتراضية. لتدريب الوجوه بلا GPU اختر REAL_CPU؛ لوضع REAL فعّل GPU. حدّد البيانات واسم تجربة جديدًا في المرحلة3. ZIP البيانات يُرفع من لوحة Files، وDrive يحتاج موافقتك.
+حدّد مصدر البيانات واسم تجربة جديدًا في المرحلة3، ثم شغّل المراحل بالترتيب أو Run all. الافتراضي Kaggle؛ ZIP البيانات بديل يُرفع من لوحة Files. USE_DRIVE=False افتراضيًا، ويمكن تفعيله للحفظ إن نجحت المصادقة. لتجربة JPEG بنموذجين استخدم FaceJPEG_Real_CPU_Ready.ipynb.
 
 كل مرحلة تعرض تقدمها. `events.log` و`status.json` يسجلان المرحلة وآخر عملية وETA من القياسات؛ استمرار heartbeat يثبت أن المراقب حي فقط، ولا يثبت تقدم العداد أو سلامة كل عملية. لا توجد مهلة تلغي تدريبًا سليمًا. حدود القرار تختار من التحقق قبل فتح الاختبار، والدرجة ترجيح غير معاير وليست شهادة أصالة.""")
     md("""## 1 — تهيئة الكود وفحص بيئة التشغيل وGPU
@@ -139,7 +226,7 @@ _blob = base64.b64decode({encoded!r})
 assert hashlib.sha256(_blob).hexdigest() == {digest!r}, "Embedded source checksum failed"
 _files = json.loads(gzip.decompress(_blob).decode("utf-8"))
 _base = Path(os.environ.get("FACEJPEG_WORKSPACE", "/content" if IN_COLAB else str(Path.cwd())))
-PROJECT = (_base / "facejpeg_final_v2_3").resolve()
+PROJECT = (_base / "facejpeg_final_v2_3_1").resolve()
 PROJECT.mkdir(parents=True, exist_ok=True)
 for _rel, _text in _files.items():
     _path = (PROJECT / _rel).resolve()
@@ -217,7 +304,7 @@ QUICK يفحص البرمجيات على40 شكلًا. REAL يدرّب الوج�
 
 `DATA_ZIP` مسار ملف سبق رفعه من شريط ملفات Colab، لا رابط ويب. `SOURCE='drive'` يقرأ مجلدًا مستخرجًا بـreal وfake. تفعيل USE_DRIVE يحفظ الصور المجهزة وbest.pt وlast.pt والتقارير. لا تضع أسرارًا في الخلايا. Batch Size يُختار تحفظيًا من الذاكرة، ويمكن تعديله عند الحاجة؛ ليس ضمانًا ضد نفاد الذاكرة.""")
     code('''
-MODE = "QUICK"  # @param ["QUICK", "REAL", "REAL_CPU"]
+MODE = "REAL_CPU"  # @param ["REAL_CPU", "REAL"]
 SOURCE = "kaggle"  # @param ["kaggle", "zip", "drive"]
 EXPERIMENT = "quick_v2_3" if MODE == "QUICK" else "faces_cpu_v2_3" if MODE == "REAL_CPU" else "faces_gpu_v2_3"
 USE_DRIVE = False  # @param {type:"boolean"}
@@ -357,7 +444,7 @@ print("Resume images included:", EXPORT_INCLUDE_PREPARED)
     code('''
 from app import create_app
 if LAUNCH_UI:
-    if "demo" in globals():
+    if globals().get("demo") is not None:
         demo.close()
     demo = create_app(BEST)
     demo.launch(share=SHARE_GRADIO if IN_COLAB else False, debug=False)
@@ -368,21 +455,22 @@ else:
     nb.metadata = {"kernelspec": {"display_name": "Python 3", "language": "python", "name": "python3"},
                    "language_info": {"name": "python", "version": "3.12"},
                    "colab": {"name": "FaceJPEG_Final_Colab.ipynb", "provenance": []}}
+    raw_notebook = copy.deepcopy(nb)
+    configure_face_training_flow(nb)
     nbf.validate(nb)
     for name in ["FaceJPEG_Final_Colab.ipynb", "FaceJPEG_Standalone.ipynb", "FaceJPEG_Colab.ipynb"]:
         nbf.write(nb, root / name)
     cpu = copy.deepcopy(nb)
     cpu.cells[0].source = """# تدريب كاشف الوجوه على CPU — بلا GPU
-هذه نسخة لتدريب صور الوجوه الفعلية، وليست اختبار الأشكال. الافتراضي MODE=REAL_CPU وSOURCE=kaggle وUSE_DRIVE=True لحفظ التقدم. يمكنك اختيار ZIP/Drive في المرحلة3. لا تحتاج GPU أو ZIP المشروع، لكن تحتاج بيانات الوجوه وتصاريحها والإنترنت لتنزيل المتطلبات.
+هذه نسخة لتدريب صور الوجوه الفعلية، وليست اختبار الأشكال. الافتراضي MODE=REAL_CPU وSOURCE=kaggle وUSE_DRIVE=False لتجنب مصادقة Drive تلقائيًا. يمكنك اختيار ZIP/Drive في المرحلة3، وتفعيل Drive للحفظ إن رغبت. لا تحتاج GPU أو ZIP المشروع، لكن تحتاج بيانات الوجوه وتصاريحها والإنترنت لتنزيل المتطلبات.
 
 تُفحص البيانات وتقسم أولًا، ثم تُختار عينة حتى1000 صورة لكل فئة. تُستخرج ميزات MobileNetV3-Small مرة واحدة للتدريب والتحقق، ويُدرّب الرأس عليها مع جدولة التعلم وحفظ الأفضل والاستكمال. الاختبار مستقل، وتجربة JPEG تأتي بعد تثبيت النموذج والحدود.
 
 لا نَعِد بدقة معينة؛ لم يُنفّذ تدريب مجموعة الوجوه في بيئتنا بسبب حجب Kaggle. اختبرنا سلامة التخزين والحساب والاستكمال برمجيًا؛ هذا ليس قياس دقة وجوه. تدريب الرأس على عينة محدودة قد لا يعمم على مولّدات أخرى. راقب F1/AUC ومعدل الاتهام الخاطئ والتغطية بعد تجربتك.
 
-شغّل المراحل بالترتيب أو Run all بعد ضبط البيانات والسماح بتركيب Drive. التحميل والتدقيق قد يستغرقان معظم وقت أول تشغيل؛ لكل مرحلة عداد منفصل."""
+شغّل المراحل بالترتيب أو Run all بعد ضبط البيانات. إذا لم تُفعّل Drive نزّل النتائج قبل انتهاء الجلسة. التحميل والتدقيق قد يستغرقان معظم وقت أول تشغيل؛ لكل مرحلة عداد منفصل."""
     config_cell = [c for c in cpu.cells if c.cell_type == "code"][2]
     config_cell.source = config_cell.source.replace('MODE = "QUICK"', 'MODE = "REAL_CPU"', 1)
-    config_cell.source = config_cell.source.replace('USE_DRIVE = False', 'USE_DRIVE = True', 1)
     cpu.metadata["colab"]["name"] = "FaceJPEG_CPU_Training.ipynb"
     nbf.validate(cpu)
     nbf.write(cpu, root / "FaceJPEG_CPU_Training.ipynb")
@@ -445,7 +533,7 @@ del _checked_predictor
 if not globals().get("MODEL_READY", False) or not globals().get("PREDICT_CHECKPOINT"):
     raise RuntimeError("شغّل الخلايا1–3 وحمّل best.pt الصالح أولًا.")
 from app import create_app
-if "demo" in globals():
+if globals().get("demo") is not None:
     demo.close()
 demo = create_app(PREDICT_CHECKPOINT)
 demo.launch(share=IN_COLAB, debug=False)
@@ -453,7 +541,7 @@ demo.launch(share=IN_COLAB, debug=False)
     ]
     nbf.validate(predict)
     nbf.write(predict, root / "FaceJPEG_Predict_Only.ipynb")
-    build_jpeg_notebook(root, nb)
+    build_jpeg_notebook(root, raw_notebook)
     print(f"Final notebook and compatibility copies: {(root/'FaceJPEG_Final_Colab.ipynb').stat().st_size:,} bytes")
 
 

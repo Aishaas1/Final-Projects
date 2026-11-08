@@ -76,7 +76,7 @@ class Predictor:
         if not self.face_classification_enabled:
             result = "كشف الأصالة غير متاح — النموذج غير مدرّب على صور الوجوه."
             note = ("⚠️ اختبار برمجي: هذه الأوزان لا تدعم الحكم على أصالة الوجه، لذلك لم نحسب درجة Real أو AI-Generated. "
-                    "المتاح هنا معاينة الصورة وضغط JPEG فقط. لتفعيل الكشف اختر MODE='REAL'، ووفّر بيانات وجوه حقيقية ومولّدة، "
+                    "المتاح هنا معاينة الصورة وضغط JPEG فقط. لتفعيل الكشف اختر MODE='REAL_CPU' بلا GPU أو MODE='REAL' مع GPU، ووفّر بيانات وجوه حقيقية ومولّدة، "
                     "ودرّب النموذج ثم حمّل best.pt من تلك التجربة. تغيير اسم الوضع وحده لا يحوّل الأوزان القديمة إلى كاشف وجوه.")
             return original, compressed, result, result, note, None, None
         scores = [self.score(im) for im in [original, compressed]]

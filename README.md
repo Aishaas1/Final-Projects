@@ -1,6 +1,8 @@
 # كشف صور الوجوه المولّدة بالذكاء الاصطناعي ودراسة أثر ضغط JPEG
 
-**التحديث2.3 — تدريب JPEG فعليًا:** افتح [دفتر المقارنة الجديد](https://colab.research.google.com/github/Aishaas1/Final-Projects/blob/main/FaceJPEG_JPEG_Training.ipynb). يدرّب نموذجًا أساسيًا وآخر بضغط JPEG عشوائي لصور التدريب فقط، ثم يثبّتهما قبل الاختبار. يدعم CPU دون GPU. يبدأ بـQUICK لفحص البرمجيات؛ لتدريب الوجوه اختر REAL_CPU ووفر البيانات. [شرح الإضافة وخطواتها](docs/JPEG_TRAINING_AR.md) · [ما اختُبر فعليًا وحدود التنفيذ](artifacts/jpeg_training/VALIDATION_AR.md).
+**التحديث2.3.1 — تدريب الوجوه افتراضيًا:** افتح [الدفتر المعدّل](https://colab.research.google.com/github/Aishaas1/Final-Projects/blob/main/FaceJPEG_Real_CPU_Ready.ipynb). يبدأ بـREAL_CPU مباشرة دون GPU أو تركيب Drive، ويدرّب نموذجًا أساسيًا وآخر بضغط JPEG. يحتاج بيانات وجوه فعلية. يتوقف عن التدريب والنتائج والواجهة برسالة واضحة عند غياب البيانات، ويرفض فتح واجهة الكشف بأوزان QUICK قديمة. [شرح JPEG](docs/JPEG_TRAINING_AR.md) · [التحقق من إصلاح الوضع الافتراضي](artifacts/real_cpu_fix/VALIDATION_AR.md).
+
+**اختبار البرمجيات فقط:** [دفتر QUICK المنفصل](https://colab.research.google.com/github/Aishaas1/Final-Projects/blob/main/FaceJPEG_JPEG_Smoke_Test.ipynb) يستخدم أشكالًا هندسية؛ ليس كاشف وجوه ولا يقيس دقتها. أوزانه لا تُحمَّل تلقائيًا في دفتر تدريب الوجوه.
 
 **تنزيل المشروع كاملًا:** [Download ZIP من GitHub](https://github.com/Aishaas1/Final-Projects/archive/refs/heads/main.zip). يشمل الدفاتر والكود والمتطلبات والواجهات وأوزان ونتائج التجارب السريعة الموسومة بوضوح؛ لا يتضمن مجموعة الوجوه أو نموذج كشف وجوه مدرّبًا عليها. الدفاتر مستقلة ويمكن فتحها مباشرة دون تنزيل ZIP.
 
@@ -18,20 +20,20 @@
 
 ## التشغيل في Colab دون ZIP المشروع
 
-1. افتح `FaceJPEG_Final_Colab.ipynb` من الرابط أعلاه. في أول تجربة أبقِ `MODE="QUICK"` ثم اختر **Runtime → Run all**. الدفتر مستقل ويكتب الكود المضمن في مجلد إصدار منفصل؛ لا يطلب ZIP المشروع.
-2. المراحل1–9 تفحص البيئة وتثبت المتطلبات وتجهز العينة وتدرّب وتحفظ وتقيّم وتصدّر النتائج. المرحلة10 تفتح Gradio؛ ارفع صورة واحدة واضحة واختر جودة JPEG. في QUICK تظهر معاينة JPEG فقط وعبارة «كشف الأصالة غير متاح»، دون درجات أو حكم على الوجه. التدريب الهندسي لا يفعّل الكشف.
-3. للتدريب الحقيقي، فعّل GPU من **Runtime → Change runtime type → GPU**، أو اختر دفتر REAL_CPU بلا GPU، ثم عدّل إعدادات المرحلة3 كما يلي، وحدّد البيانات قبل Run all.
+1. افتح `FaceJPEG_Real_CPU_Ready.ipynb` للمقارنة بنموذجين، أو `FaceJPEG_Final_Colab.ipynb` لتدريب نموذج واحد. يبدأ كلاهما بـREAL_CPU؛ حدّد مصدر بيانات الوجوه في المرحلة3 ثم شغّل المراحل. الكود مضمن ولا يحتاج ZIP المشروع.
+2. المراحل1–9 تفحص البيئة وتثبت المتطلبات وتجهز البيانات وتدرّب وتحفظ وتقيّم وتصدّر النتائج. المرحلة10 تتحقق من الأوزان وتفتح Gradio بعد اكتمال التدريب. عند غياب البيانات تظهر خطوات ZIP ولا تُفتح واجهة بأوزان قديمة. بيانات الأشكال ليست بديلًا عن الوجوه.
+3. للفحص البرمجي السريع دون بيانات وجوه افتح `FaceJPEG_JPEG_Smoke_Test.ipynb` وشغّل Run all؛ الواجهة فيه للضغط فقط. للتدريب الحقيقي بلا GPU هذه أمثلة إعدادات المرحلة3، ويمكن اختيار ZIP/Drive بدل Kaggle:
 
 ```python
-MODE = "REAL"
+MODE = "REAL_CPU"
 SOURCE = "kaggle"  # أو zip أو drive
-USE_DRIVE = True
-EXPERIMENT = "faces_v2_1_my_first_run"
-EPOCHS = 10
-BATCH_SIZE = None  # اختيار تحفظي حسب الذاكرة، ويمكن اختيار16 مثلًا
+USE_DRIVE = False
+EXPERIMENT = "faces_v2_3_1_my_first_run"
+EPOCHS = 20
+BATCH_SIZE = 64  # دفعة ميزات CPU؛ استخراج الصور بدفعات أصغر
 ```
 
-لا يُستبدل زوج Torch/Torchvision المثبت في Colab بعجلات CPU. المتطلبات هناك في `requirements-colab.txt`. عندما يظهر `GPU=False` أو بناء `+cpu` لا يبدأ تدريب وجوه طويل خفية؛ اختر Quick Test أو جلسة GPU نظيفة. السماح الواعي بالتدريب البطيء على CPU يحتاج `ALLOW_CPU_REAL=True`؛ لا نفعل ذلك تلقائيًا. لا نملك سجل جلسة المستخدم السابقة كاملًا، لذلك لا ننسب انتظار ساعة إلى سبب لم تثبته السجلات.
+لا يُستبدل زوج Torch/Torchvision المثبت في Colab بعجلات CPU. المتطلبات هناك في `requirements-colab.txt`. REAL_CPU هو المسار المخصص للتدريب على المعالج ويثبت مستخرج الميزات؛ GPU=False طبيعي فيه. لاختيار REAL الذي يضبط آخر طبقات الشبكة فعّل GPU من Runtime → Change runtime type؛ السماح له بالعمل على CPU يحتاج ALLOW_CPU_REAL=True. USE_DRIVE=False افتراضيًا لتجنب الاعتماد على مصادقة Drive، ويجب تنزيل النتائج قبل انتهاء الجلسة إن لم تفعل الحفظ إليه.
 
 `FaceJPEG_Standalone.ipynb` و`FaceJPEG_Colab.ipynb` نسختان متوافقتان من الدفتر النهائي حتى تظل الروابط القديمة صالحة. ملف `scripts/build_final_notebook.py` يعيد توليد الأسماء الثلاثة من مصدر واحد. التفاصيل في تقرير المراجعة.
 
