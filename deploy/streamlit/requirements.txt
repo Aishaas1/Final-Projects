@@ -1,0 +1,8 @@
+# Lightweight CPU inference; no Gradio, training, or dataset download on startup.
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.5.1+cpu
+torchvision==0.20.1+cpu
+numpy>=1.26,<2.3
+Pillow>=10.4,<13
+opencv-python-headless>=4.10,<5
+streamlit==1.67.0

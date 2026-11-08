@@ -4,6 +4,8 @@
 
 **لتجربة صورة لاحقًا دون إعادة التدريب:** افتح [دفتر التنبؤ فقط](https://colab.research.google.com/github/Aishaas1/Final-Projects/blob/main/FaceJPEG_Predict_Only.ipynb)، وشغّل خلاياه الأربع لتحميل `best.pt` المحفوظ ثم فتح الواجهة. لا يحتاج بيانات التدريب أو GPU أو تركيب Drive. يقبل أوزان تجربة وجوه فعلية، ويرفض أوزان QUICK الهندسية.
 
+**لرابط ثابت باستضافة مجانية دون Colab:** اتبع [دليل Streamlit Community Cloud](deploy/streamlit/README_AR.md). واجهة النشر تستخدم Predictor والمعالجة وحدود القرار نفسها، وتحتاج best.pt من تدريب الوجوه. ملفات النشر جاهزة؛ إنشاء التطبيق في حساب الاستضافة وإضافة أوزان الوجوه خطوتان تُنفّذان من حسابك.
+
 [افتح الدفتر النهائي في Google Colab](https://colab.research.google.com/github/Aishaas1/Final-Projects/blob/main/FaceJPEG_Final_Colab.ipynb) · [تقرير المراجعة والإصلاحات](docs/REVIEW_AND_FIXES_AR.md) · [إصلاح أحكام QUICK المضللة](docs/INFERENCE_FIX_AR.md) · [بطاقة البيانات والحقوق](docs/DATASET_CARD_AR.md)
 
 المشروع يستخدم Python وPyTorch وMobileNetV3-Small وواجهة Gradio عربية. يقارن فوتوغرافيات الوجوه بوجوه مولّدة بالكامل؛ لا يدّعي كشف كل أنواع التزييف أو تبديل الوجوه. القرار ثلاثي: «يرجّح أنها صورة فوتوغرافية»، «يرجّح أنها مولّدة بالذكاء الاصطناعي»، «النتيجة غير حاسمة». درجات الفئتين ترجيحات غير معايرة، وليست دليل أصالة.

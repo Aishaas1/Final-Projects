@@ -1,0 +1,21 @@
+{
+  "http_status": 200,
+  "browser": "Chromium headless",
+  "uploaded_image": "examples/test_images/real_nasa.png",
+  "jpeg_quality": 70,
+  "preview_rgb_sha256": [
+    "16bff06bc3cfc3f3a04f073152b1e2311ccddd13f493f58cae10e7475b354587",
+    "dafe69be6f5aa939e73bed839f0e7b38f72607b4ed6ab18e9a4172c92e084122"
+  ],
+  "previews_format": "PNG",
+  "previews_size": [
+    224,
+    224
+  ],
+  "face_classification_enabled": false,
+  "demo_scores_and_authenticity_judgments_hidden": true,
+  "hosted_community_cloud_tested": false,
+  "actual_face_training": false,
+  "face_accuracy_measured": false,
+  "displayed_pixels_match_shared_predictor_recipe": true
+}
