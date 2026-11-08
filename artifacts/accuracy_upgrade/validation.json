@@ -1,0 +1,23 @@
+{
+  "version": "2.4.0",
+  "tests_passed": 70,
+  "warnings": 18,
+  "test_seconds": 26.13,
+  "existing_ui_and_notebooks_unchanged_sha256": {
+    "app.py": "7fc7a36aed2e7fcddf5ad1c218ac23daf869eebf199f1608ffb37744bd5e5c56",
+    "FaceJPEG_Real_CPU_Ready.ipynb": "1c5f205c10acbc24ab698cb6fb77983f150df5774fb716e6b659bf9fd27c6c9c",
+    "FaceJPEG_JPEG_Training.ipynb": "2ca4f64eac44bebd3ab10938f041f51c8d169f588084bb717977d518464b40f2"
+  },
+  "upgrade_bundle_includes_identical_ui": true,
+  "warm_start_resume_and_original_checkpoint_preservation_tested": true,
+  "differential_learning_rates_and_selected_parameter_updates_tested": true,
+  "validation_does_not_read_train_or_test_images_tested": true,
+  "incumbent_fallback_and_original_validation_floor_tested": true,
+  "user_reported_original_accuracy": 0.82,
+  "user_reported_q30_accuracy": 0.773333,
+  "user_results_independently_recomputed": false,
+  "new_face_accuracy_gain_measured_here": false,
+  "gpu_execution_tested": false,
+  "research_weights_or_images_received": false,
+  "current_deployed_model_is_explicit_incumbent": true
+}

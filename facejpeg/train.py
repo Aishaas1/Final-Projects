@@ -12,7 +12,7 @@ from tqdm.auto import tqdm
 
 from .augmentation import jpeg_settings, jpeg_training_view
 from .common import (CLASSES, PREPROCESS, atomic_torch_save, build_model, decisions,
-                     file_sha256, read_rgb, seed_everything, tensorize, write_json)
+                     file_sha256, load_bundle, read_rgb, seed_everything, tensorize, write_json)
 from .data import validate_manifest
 from .features import FeatureRows, cached_features
 from .runtime import Monitor, choose_batch_size, hardware_info, loader_options
@@ -92,6 +92,21 @@ def configure_transfer(model, quick, blocks, warmup):
     return selected
 
 
+def make_optimizer(model, selected, lr, backbone_lr_factor=1., quick=False, legacy=False):
+    head = list(model.classifier.parameters())
+    backbone = [] if quick else [p for block in selected for p in block.parameters()]
+    parameters = head + backbone
+    if legacy and not quick:
+        parameters = list(model.parameters())
+    if backbone and backbone_lr_factor != 1. and not legacy:
+        groups = [{"params": head, "lr": lr}, {"params": backbone, "lr": lr * backbone_lr_factor}]
+        optimizer = torch.optim.AdamW(groups, lr=lr, weight_decay=.01)
+    else:
+        # Preserve the single parameter-group layout of existing checkpoints.
+        optimizer = torch.optim.AdamW(parameters, lr=lr, weight_decay=.01)
+    return optimizer, parameters
+
+
 def save_learning_curves(history, out, run_label):
     import matplotlib
     matplotlib.use("Agg")
@@ -113,23 +128,28 @@ def save_learning_curves(history, out, run_label):
 def train(prepared, output, epochs=10, batch_size=None, lr=1e-4, quick=False, resume=True,
           pretrained=True, seed=42, warmup_epochs=1, finetune_blocks=3, use_amp=True,
           workers=None, allow_cpu_real=False, cache_features=False, use_scheduler=False,
-          early_stopping_patience=5, jpeg_qualities=(), jpeg_probability=.5):
+          early_stopping_patience=5, jpeg_qualities=(), jpeg_probability=.5,
+          initial_checkpoint=None, backbone_lr_factor=1., feature_cache_directory=None):
     with Monitor(output) as monitor:
         try:
             return _train(prepared, output, epochs, batch_size, lr, quick, resume, pretrained,
                           seed, warmup_epochs, finetune_blocks, use_amp, workers, allow_cpu_real,
                           cache_features, use_scheduler, early_stopping_patience,
-                          jpeg_qualities, jpeg_probability, monitor)
+                          jpeg_qualities, jpeg_probability, initial_checkpoint, backbone_lr_factor,
+                          feature_cache_directory, monitor)
         except torch.cuda.OutOfMemoryError as exc:
             raise RuntimeError("نفدت ذاكرة GPU. اختر BATCH_SIZE أصغر واسم تجربة جديد، وأغلق النماذج الأخرى. لم يُعد التدريب تلقائيًا على CPU.") from exc
 
 
 def _train(prepared, output, epochs, batch_size, lr, quick, resume, pretrained, seed,
            warmup_epochs, finetune_blocks, use_amp, workers, allow_cpu_real,
-           cache_features, use_scheduler, early_stopping_patience, jpeg_qualities, jpeg_probability, monitor):
+           cache_features, use_scheduler, early_stopping_patience, jpeg_qualities, jpeg_probability,
+           initial_checkpoint, backbone_lr_factor, feature_cache_directory, monitor):
     jpeg_qualities, jpeg_probability = jpeg_settings(jpeg_qualities, jpeg_probability)
     if epochs < 1 or lr <= 0 or finetune_blocks < -1 or warmup_epochs < 0 or early_stopping_patience < 1:
         raise ValueError("Invalid epochs/lr/transfer-learning configuration")
+    if not np.isfinite(backbone_lr_factor) or not 0 < backbone_lr_factor <= 1:
+        raise ValueError("backbone_lr_factor must be in (0,1]")
     seed_everything(seed)
     torch.set_num_threads(min(4, torch.get_num_threads()))
     root, out = Path(prepared), Path(output)
@@ -151,6 +171,14 @@ def _train(prepared, output, epochs, batch_size, lr, quick, resume, pretrained, 
     monitor.event(f"device={device}; batch_size={batch_size}; GPU={hw.get('gpu_name', 'none')}")
     last_path, best_path = out / "last.pt", out / "best.pt"
     manifest_hash = file_sha256(root / "manifest.csv")
+    initial_model, initial_info, initial_hash = None, None, None
+    if initial_checkpoint is not None:
+        initial_hash = file_sha256(initial_checkpoint)
+        initial_model, initial_info = load_bundle(initial_checkpoint, "cpu")
+        if initial_info["manifest_sha256"] != manifest_hash or initial_info["data_kind"] != audit["data_kind"]:
+            raise ValueError("Warm start requires the identical prepared split and dataset kind")
+        if initial_info["preprocess"] != PREPROCESS:
+            raise ValueError("Warm start preprocessing differs from this training recipe")
     previous = torch.load(last_path, map_location="cpu", weights_only=True) if resume and last_path.exists() else None
     if not resume and (best_path.exists() or last_path.exists()):
         raise FileExistsError("Use a new output directory for a new experiment")
@@ -158,7 +186,7 @@ def _train(prepared, output, epochs, batch_size, lr, quick, resume, pretrained, 
         raise ValueError("Resume requires identical manifest, mode and seed; choose new output")
     legacy = bool(previous and "training_config" not in previous)
     if legacy:
-        if cache_features or use_scheduler or jpeg_qualities:
+        if cache_features or use_scheduler or jpeg_qualities or initial_checkpoint or backbone_lr_factor != 1.:
             raise ValueError("Legacy checkpoint has a different strategy; choose a new experiment for cached CPU training")
         # Keep old checkpoint optimizer layout; never silently discard its optimizer.
         warmup_epochs, finetune_blocks = 0, -1
@@ -168,21 +196,18 @@ def _train(prepared, output, epochs, batch_size, lr, quick, resume, pretrained, 
               "workers": loader_options(device, quick, workers)["num_workers"],
               "cache_features": bool(cache_features), "use_scheduler": bool(use_scheduler),
               "early_stopping_patience": early_stopping_patience,
-              "jpeg_qualities": list(jpeg_qualities), "jpeg_probability": jpeg_probability}
+              "jpeg_qualities": list(jpeg_qualities), "jpeg_probability": jpeg_probability,
+              "initial_checkpoint_sha256": initial_hash, "backbone_lr_factor": float(backbone_lr_factor)}
     defaults = {"cache_features": False, "use_scheduler": False, "early_stopping_patience": 5,
-                "jpeg_qualities": [], "jpeg_probability": 0.}
+                "jpeg_qualities": [], "jpeg_probability": 0.,
+                "initial_checkpoint_sha256": None, "backbone_lr_factor": 1.}
     if previous and previous.get("training_config") and {**defaults, **previous["training_config"]} != config:
         raise ValueError("Resume settings changed (batch/lr/AMP/transfer/workers); restore original config or use a new experiment")
     monitor.stage("تحميل MobileNetV3 والأوزان الرسمية")
-    model = build_model(pretrained=pretrained and previous is None).to(device)
+    model = (initial_model if initial_model is not None else
+             build_model(pretrained=pretrained and previous is None)).to(device)
     selected = configure_transfer(model, quick, config["finetune_blocks"], warmup=False)
-    parameters = list(model.classifier.parameters())
-    if not quick:
-        parameters += [p for block in selected for p in block.parameters()]
-    # Legacy full checkpoints used model.parameters() ordering (features, then classifier).
-    if legacy and not quick:
-        parameters = list(model.parameters())
-    optimizer = torch.optim.AdamW(parameters, lr=lr, weight_decay=.01)
+    optimizer, parameters = make_optimizer(model, selected, lr, backbone_lr_factor, quick, legacy)
     scheduler = (torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode="min", factor=.5,
                  patience=2, min_lr=1e-6) if use_scheduler else None)
     scaler = torch.amp.GradScaler("cuda", enabled=config["amp"])
@@ -211,7 +236,9 @@ def _train(prepared, output, epochs, batch_size, lr, quick, resume, pretrained, 
                           jpeg_qualities=jpeg_qualities, jpeg_probability=jpeg_probability)
     val_dataset = Faces(val_frame, root)
     if cache_features:
-        cache, cache_path = cached_features(model, frame, root, out, PREPROCESS, monitor,
+        cache, cache_path = cached_features(model, frame, root,
+                                            out if feature_cache_directory is None else feature_cache_directory,
+                                            PREPROCESS, monitor,
                                             batch_size=min(batch_size, 16), jpeg_qualities=jpeg_qualities)
         forward_model = model.classifier
         train_dataset = FeatureRows(cache["train_original"], cache["train_labels"],
@@ -232,7 +259,7 @@ def _train(prepared, output, epochs, batch_size, lr, quick, resume, pretrained, 
     base = {"schema_version": 1, "architecture": "mobilenet_v3_small", "classes": CLASSES,
             "preprocess": PREPROCESS, "thresholds": None, "manifest_sha256": manifest_hash,
             "seed": seed, "quick": quick, "data_kind": audit["data_kind"], "training_config": config,
-            "pretrained": previous["pretrained"] if previous else pretrained,
+            "pretrained": previous["pretrained"] if previous else initial_info["pretrained"] if initial_info else pretrained,
             "run_label": "SMOKE_ONLY_NOT_A_FACE_DETECTOR" if audit["data_kind"] == "procedural_fixture" else
                          "QUICK_SUBSET" if quick else "REAL_CPU_FROZEN_BACKBONE" if cache_features else "REAL_TRAINING"}
     for epoch in range(start, epochs):

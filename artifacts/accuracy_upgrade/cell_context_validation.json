@@ -1,0 +1,8 @@
+{
+  "existing_ui_preserved_for_rejected_shapes": true,
+  "existing_best_and_run_and_data_preserved": true,
+  "torch_not_reloaded": true,
+  "primary_cell_rejects_software_weights": true,
+  "actual_face_accuracy_improvement_measured_here": false,
+  "gpu_execution_tested": false
+}
