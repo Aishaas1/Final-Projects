@@ -1,0 +1,76 @@
+{
+  "file": "4b62d7f408834737ac84c759fa531d01b4141dc7e90036a9d55a2c5aa4382285.pt",
+  "metadata": {
+    "cache_schema": 1,
+    "classes": [
+      "real",
+      "fake"
+    ],
+    "torch_version": "2.5.1+cpu",
+    "torchvision_version": "0.20.1+cpu",
+    "manifest_sha256": "f035502175342e6c44c93f5c781bee6cfff2200244c32891d12b746cea143bac",
+    "prepared_pixels_sha256": "250488c766193b7fc5ad3a2f37eaf12709f565507e5cf41a0991439683b25cdf",
+    "backbone_sha256": "7cfade2b900c5e7295f62cdbbbbde0e424ebaa8dc7f8ce564bd65d55573feb7b",
+    "preprocess": {
+      "size": 224,
+      "resize": "center_square_bicubic",
+      "color": "RGB",
+      "mean": [
+        0.485,
+        0.456,
+        0.406
+      ],
+      "std": [
+        0.229,
+        0.224,
+        0.225
+      ],
+      "exif_transpose": true,
+      "jpeg_subsampling": 2
+    },
+    "train_paths": [
+      "images/train/fake/0000000.png",
+      "images/train/fake/0000002.png",
+      "images/train/fake/0000003.png",
+      "images/train/fake/0000004.png",
+      "images/train/fake/0000005.png",
+      "images/train/fake/0000006.png",
+      "images/train/fake/0000007.png",
+      "images/train/fake/0000009.png",
+      "images/train/fake/0000010.png",
+      "images/train/fake/0000011.png",
+      "images/train/fake/0000013.png",
+      "images/train/fake/0000014.png",
+      "images/train/fake/0000018.png",
+      "images/train/fake/0000019.png",
+      "images/train/real/0000020.png",
+      "images/train/real/0000021.png",
+      "images/train/real/0000022.png",
+      "images/train/real/0000023.png",
+      "images/train/real/0000024.png",
+      "images/train/real/0000025.png",
+      "images/train/real/0000026.png",
+      "images/train/real/0000028.png",
+      "images/train/real/0000031.png",
+      "images/train/real/0000033.png",
+      "images/train/real/0000034.png",
+      "images/train/real/0000036.png",
+      "images/train/real/0000037.png",
+      "images/train/real/0000039.png"
+    ],
+    "val_paths": [
+      "images/val/fake/0000001.png",
+      "images/val/fake/0000012.png",
+      "images/val/fake/0000015.png",
+      "images/val/real/0000027.png",
+      "images/val/real/0000030.png",
+      "images/val/real/0000032.png"
+    ],
+    "augmentation": "original or horizontal flip; training only"
+  },
+  "test_images_cached": false,
+  "backbone_frozen": true,
+  "feature_dimension": 576,
+  "cache_reused": false,
+  "extraction_seconds_when_built": 0.35462176899818587
+}

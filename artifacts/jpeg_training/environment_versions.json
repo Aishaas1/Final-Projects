@@ -1,0 +1,12 @@
+{
+  "torch": "2.5.1+cpu",
+  "torchvision": "0.20.1+cpu",
+  "Pillow": "11.3.0",
+  "numpy": "2.2.6",
+  "pandas": "2.3.3",
+  "gradio": "5.50.0",
+  "streamlit": "1.67.0",
+  "scikit-learn": "1.9.1",
+  "pytest": "9.2.0",
+  "nbformat": "5.11.1"
+}

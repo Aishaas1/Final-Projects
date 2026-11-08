@@ -1,0 +1,12 @@
+{
+  "status": "completed",
+  "stage": "اختيار الحدود من التحقق فقط",
+  "completed": 6,
+  "total": 6,
+  "last_success": "أفضل نموذج وحدود التحقق جاهزة: /workspace/Final-Projects/facejpeg_final_v2_3/runs/jpeg_quick_v2_3/baseline/best.pt",
+  "elapsed_stage_seconds": 0.1963066770003934,
+  "elapsed_run_seconds": 1.0066702090007311,
+  "seconds_since_progress": 0.17887099099971238,
+  "units_per_second": 30.56442140268095,
+  "eta_seconds": 0.0
+}

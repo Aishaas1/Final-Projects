@@ -1,0 +1,48 @@
+{
+  "version": "2.3.0",
+  "tests_passed": 53,
+  "warnings": 18,
+  "test_seconds": 19.32,
+  "quick_notebook_stages_executed": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10
+  ],
+  "training_kind": "procedural shapes; software verification only",
+  "prepared_image_count": 40,
+  "splits": {
+    "train": 28,
+    "val": 6,
+    "test": 6
+  },
+  "genuine_face_training": false,
+  "face_accuracy_measured": false,
+  "hosted_colab_tested": false,
+  "gpu_training_tested": false,
+  "drive_oauth_tested": false,
+  "jpeg_train_qualities": [
+    90,
+    70,
+    50,
+    30
+  ],
+  "jpeg_probability": 0.5,
+  "test_qualities": [
+    "original",
+    100,
+    90,
+    70,
+    50,
+    30,
+    10
+  ],
+  "gradio_local_api_passed": true,
+  "fresh_dependency_download": "not exercised in notebook validation; already installed compatible packages satisfied offline"
+}

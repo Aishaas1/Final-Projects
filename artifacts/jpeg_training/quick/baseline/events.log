@@ -1,0 +1,18 @@
+18:16:44 | بدء المرحلة: التحقق من التقسيم وبيئة التشغيل; total=None
+18:16:44 | device=cpu; batch_size=8; GPU=none
+18:16:44 | بدء المرحلة: تحميل MobileNetV3 والأوزان الرسمية; total=None
+18:16:44 | بدء المرحلة: التحقق من بصمات صور ميزات CPU; total=34
+18:16:44 | بدء المرحلة: استخراج ميزات CPU مرة واحدة: train; total=28
+18:16:44 | بدء المرحلة: استخراج ميزات CPU مرة واحدة: val; total=6
+18:16:44 | حُفظت ميزات التدريب والتحقق فقط: 4b62d7f408834737ac84c759fa531d01b4141dc7e90036a9d55a2c5aa4382285.pt
+18:16:44 | بدء المرحلة: تدريب Epoch 1/2; total=28
+18:16:44 | بدء المرحلة: تحقق Epoch 1/2; total=6
+18:16:44 | بدء المرحلة: حفظ checkpoint ونتائج الحقبة; total=None
+18:16:45 | checkpoint حقبة 1 محفوظ | loss=0.5092 val_loss=0.2134 accuracy=0.750 val_accuracy=1.000 epoch=0.0s ETA≈0.0s
+18:16:45 | بدء المرحلة: تدريب Epoch 2/2; total=28
+18:16:45 | بدء المرحلة: تحقق Epoch 2/2; total=6
+18:16:45 | بدء المرحلة: حفظ checkpoint ونتائج الحقبة; total=None
+18:16:45 | checkpoint حقبة 2 محفوظ | loss=0.1066 val_loss=0.1535 accuracy=1.000 val_accuracy=1.000 epoch=0.0s ETA≈0.0s
+18:16:45 | بدء المرحلة: اختيار الحدود من التحقق فقط; total=6
+18:16:45 | أفضل نموذج وحدود التحقق جاهزة: /workspace/Final-Projects/facejpeg_final_v2_3/runs/jpeg_quick_v2_3/baseline/best.pt
+18:16:45 | اكتملت العملية؛ elapsed=1.01s

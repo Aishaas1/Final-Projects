@@ -1,5 +1,9 @@
 # كشف صور الوجوه المولّدة بالذكاء الاصطناعي ودراسة أثر ضغط JPEG
 
+**التحديث2.3 — تدريب JPEG فعليًا:** افتح [دفتر المقارنة الجديد](https://colab.research.google.com/github/Aishaas1/Final-Projects/blob/main/FaceJPEG_JPEG_Training.ipynb). يدرّب نموذجًا أساسيًا وآخر بضغط JPEG عشوائي لصور التدريب فقط، ثم يثبّتهما قبل الاختبار. يدعم CPU دون GPU. يبدأ بـQUICK لفحص البرمجيات؛ لتدريب الوجوه اختر REAL_CPU ووفر البيانات. [شرح الإضافة وخطواتها](docs/JPEG_TRAINING_AR.md) · [ما اختُبر فعليًا وحدود التنفيذ](artifacts/jpeg_training/VALIDATION_AR.md).
+
+**تنزيل المشروع كاملًا:** [Download ZIP من GitHub](https://github.com/Aishaas1/Final-Projects/archive/refs/heads/main.zip). يشمل الدفاتر والكود والمتطلبات والواجهات وأوزان ونتائج التجارب السريعة الموسومة بوضوح؛ لا يتضمن مجموعة الوجوه أو نموذج كشف وجوه مدرّبًا عليها. الدفاتر مستقلة ويمكن فتحها مباشرة دون تنزيل ZIP.
+
 **بلا GPU:** افتح [دفتر تدريب الوجوه على CPU](https://colab.research.google.com/github/Aishaas1/Final-Projects/blob/main/FaceJPEG_CPU_Training.ipynb). يبدأ بـMODE=REAL_CPU، ويخزن ميزات الصور مرة واحدة ثم يدرّب الرأس على بيانات وجوه فعلية. يحتاج البيانات؛ لا يحتوي أوزان كشف وجوه مدرّبة مسبقًا. [شرح مسار CPU وحدود التحقق](docs/CPU_TRAINING_AR.md).
 
 **لتجربة صورة لاحقًا دون إعادة التدريب:** افتح [دفتر التنبؤ فقط](https://colab.research.google.com/github/Aishaas1/Final-Projects/blob/main/FaceJPEG_Predict_Only.ipynb)، وشغّل خلاياه الأربع لتحميل `best.pt` المحفوظ ثم فتح الواجهة. لا يحتاج بيانات التدريب أو GPU أو تركيب Drive. يقبل أوزان تجربة وجوه فعلية، ويرفض أوزان QUICK الهندسية.

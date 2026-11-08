@@ -1,0 +1,7 @@
+{
+  "torch": "2.5.1+cpu",
+  "cuda_build": null,
+  "cuda_available": false,
+  "cpu_count": 5,
+  "guidance_ar": "لا توجد CUDA متاحة. اختر REAL_CPU لتدريب الوجوه على المعالج، أو QUICK لاختبار البرمجيات فقط. لوضع REAL الذي يضبط الشبكة اختر Runtime → Change runtime type → GPU. نسخة torch ذات اللاحقة +cpu لا تستخدم CUDA. هذا التشخيص لا يثبت سبب انتظار جلسة سابقة."
+}

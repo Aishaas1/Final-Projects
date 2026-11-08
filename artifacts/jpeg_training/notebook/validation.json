@@ -1,0 +1,20 @@
+{
+  "executed_locally": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10
+  ],
+  "source": "fixture",
+  "quick": true,
+  "notebook": "FaceJPEG_JPEG_Training.ipynb",
+  "run_directory": "/workspace/Final-Projects/facejpeg_final_v2_3/runs/jpeg_quick_v2_3",
+  "gradio_launch_in_notebook": "disabled; tested separately by local API",
+  "colab_drive_and_browser_runtime": "not executed in hosted Colab here"
+}

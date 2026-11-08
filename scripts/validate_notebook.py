@@ -19,11 +19,12 @@ import IPython.display as ipdisplay
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", default="artifacts/review/notebook")
+    parser.add_argument("--notebook", default="FaceJPEG_Final_Colab.ipynb")
     args = parser.parse_args()
     project_root = Path.cwd().resolve()
     output = (project_root / args.output).resolve()
     output.mkdir(parents=True, exist_ok=True)
-    path = project_root / "FaceJPEG_Final_Colab.ipynb"
+    path = (project_root / args.notebook).resolve()
     notebook = nbformat.read(path, as_version=4)
     namespace, completed = {"__name__": "__notebook__"}, []
     current = None
@@ -61,6 +62,7 @@ def main():
     nbformat.validate(notebook)
     nbformat.write(notebook, output / "executed_quick.ipynb")
     record = {"executed_locally": completed, "source": "fixture", "quick": True,
+              "notebook": path.name, "run_directory": str(namespace["RUN"]),
               "gradio_launch_in_notebook": "disabled; tested separately by local API",
               "colab_drive_and_browser_runtime": "not executed in hosted Colab here"}
     (output / "validation.json").write_text(json.dumps(record, indent=2))

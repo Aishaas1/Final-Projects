@@ -1,0 +1,12 @@
+{
+  "device": "cpu",
+  "run_label": "SMOKE_ONLY_NOT_A_FACE_DETECTOR",
+  "measured_epoch_seconds": [
+    0.01371526000002632,
+    0.01495930400051293
+  ],
+  "mean_epoch_seconds": 0.014337282000269624,
+  "scope": "training plus validation; excludes download/audit/checkpoint writes and one-time backbone feature extraction; see feature_cache_info.json",
+  "cached_feature_training": true,
+  "gpu_estimate": "not measured"
+}

@@ -1,0 +1,18 @@
+{
+  "share": false,
+  "checkpoint": "artifacts/jpeg_training/quick/jpeg_augmented/best.pt",
+  "لم أجد": "passed",
+  "تالف": "passed",
+  "عدة وجوه": "passed",
+  "demo_face_judgments_and_scores_suppressed": "passed",
+  "score_parity": "not_applicable_demo_scores_suppressed",
+  "http": 200,
+  "single_face": "passed",
+  "response_text_parity": "passed",
+  "lossless_png_previews": "passed",
+  "face_classification_enabled": false,
+  "no_real_training_claim": true,
+  "single_face_file": "real_nasa.png",
+  "multiple_faces_file": "facejpeg-multiple-test.png",
+  "sample": "Caller-supplied images for UI tests only; not training data or a classification benchmark"
+}

@@ -10,6 +10,7 @@ import torch
 from torch.utils.data import DataLoader, Dataset
 from tqdm.auto import tqdm
 
+from .augmentation import jpeg_settings, jpeg_training_view
 from .common import (CLASSES, PREPROCESS, atomic_torch_save, build_model, decisions,
                      file_sha256, read_rgb, seed_everything, tensorize, write_json)
 from .data import validate_manifest
@@ -18,9 +19,10 @@ from .runtime import Monitor, choose_batch_size, hardware_info, loader_options
 
 
 class Faces(Dataset):
-    def __init__(self, frame, root, config=None, augment=False):
+    def __init__(self, frame, root, config=None, augment=False, jpeg_qualities=(), jpeg_probability=.5):
         self.frame, self.root = frame.reset_index(drop=True), Path(root)
         self.config, self.augment = config or PREPROCESS, augment
+        self.jpeg_qualities, self.jpeg_probability = jpeg_settings(jpeg_qualities, jpeg_probability)
 
     def __len__(self):
         return len(self.frame)
@@ -28,6 +30,9 @@ class Faces(Dataset):
     def __getitem__(self, i):
         row = self.frame.iloc[i]
         im = read_rgb(self.root / row.path)
+        if self.jpeg_qualities and torch.rand(1).item() < self.jpeg_probability:
+            quality = self.jpeg_qualities[int(torch.randint(len(self.jpeg_qualities), (1,)).item())]
+            im = jpeg_training_view(im, quality, self.config)
         if self.augment and torch.rand(1).item() < .5:
             from PIL import Image
             im = im.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
@@ -108,19 +113,21 @@ def save_learning_curves(history, out, run_label):
 def train(prepared, output, epochs=10, batch_size=None, lr=1e-4, quick=False, resume=True,
           pretrained=True, seed=42, warmup_epochs=1, finetune_blocks=3, use_amp=True,
           workers=None, allow_cpu_real=False, cache_features=False, use_scheduler=False,
-          early_stopping_patience=5):
+          early_stopping_patience=5, jpeg_qualities=(), jpeg_probability=.5):
     with Monitor(output) as monitor:
         try:
             return _train(prepared, output, epochs, batch_size, lr, quick, resume, pretrained,
                           seed, warmup_epochs, finetune_blocks, use_amp, workers, allow_cpu_real,
-                          cache_features, use_scheduler, early_stopping_patience, monitor)
+                          cache_features, use_scheduler, early_stopping_patience,
+                          jpeg_qualities, jpeg_probability, monitor)
         except torch.cuda.OutOfMemoryError as exc:
             raise RuntimeError("نفدت ذاكرة GPU. اختر BATCH_SIZE أصغر واسم تجربة جديد، وأغلق النماذج الأخرى. لم يُعد التدريب تلقائيًا على CPU.") from exc
 
 
 def _train(prepared, output, epochs, batch_size, lr, quick, resume, pretrained, seed,
            warmup_epochs, finetune_blocks, use_amp, workers, allow_cpu_real,
-           cache_features, use_scheduler, early_stopping_patience, monitor):
+           cache_features, use_scheduler, early_stopping_patience, jpeg_qualities, jpeg_probability, monitor):
+    jpeg_qualities, jpeg_probability = jpeg_settings(jpeg_qualities, jpeg_probability)
     if epochs < 1 or lr <= 0 or finetune_blocks < -1 or warmup_epochs < 0 or early_stopping_patience < 1:
         raise ValueError("Invalid epochs/lr/transfer-learning configuration")
     seed_everything(seed)
@@ -151,7 +158,7 @@ def _train(prepared, output, epochs, batch_size, lr, quick, resume, pretrained, 
         raise ValueError("Resume requires identical manifest, mode and seed; choose new output")
     legacy = bool(previous and "training_config" not in previous)
     if legacy:
-        if cache_features or use_scheduler:
+        if cache_features or use_scheduler or jpeg_qualities:
             raise ValueError("Legacy checkpoint has a different strategy; choose a new experiment for cached CPU training")
         # Keep old checkpoint optimizer layout; never silently discard its optimizer.
         warmup_epochs, finetune_blocks = 0, -1
@@ -160,8 +167,10 @@ def _train(prepared, output, epochs, batch_size, lr, quick, resume, pretrained, 
               "finetune_blocks": 0 if quick else finetune_blocks, "amp": bool(use_amp and device == "cuda"),
               "workers": loader_options(device, quick, workers)["num_workers"],
               "cache_features": bool(cache_features), "use_scheduler": bool(use_scheduler),
-              "early_stopping_patience": early_stopping_patience}
-    defaults = {"cache_features": False, "use_scheduler": False, "early_stopping_patience": 5}
+              "early_stopping_patience": early_stopping_patience,
+              "jpeg_qualities": list(jpeg_qualities), "jpeg_probability": jpeg_probability}
+    defaults = {"cache_features": False, "use_scheduler": False, "early_stopping_patience": 5,
+                "jpeg_qualities": [], "jpeg_probability": 0.}
     if previous and previous.get("training_config") and {**defaults, **previous["training_config"]} != config:
         raise ValueError("Resume settings changed (batch/lr/AMP/transfer/workers); restore original config or use a new experiment")
     monitor.stage("تحميل MobileNetV3 والأوزان الرسمية")
@@ -198,14 +207,18 @@ def _train(prepared, output, epochs, batch_size, lr, quick, resume, pretrained, 
     train_frame, val_frame = frame[frame.split == "train"], frame[frame.split == "val"]
     options = loader_options(device, quick, workers)
     forward_model = model
-    train_dataset = Faces(train_frame, root, augment=not quick)
+    train_dataset = Faces(train_frame, root, augment=not quick,
+                          jpeg_qualities=jpeg_qualities, jpeg_probability=jpeg_probability)
     val_dataset = Faces(val_frame, root)
     if cache_features:
         cache, cache_path = cached_features(model, frame, root, out, PREPROCESS, monitor,
-                                            batch_size=min(batch_size, 16))
+                                            batch_size=min(batch_size, 16), jpeg_qualities=jpeg_qualities)
         forward_model = model.classifier
         train_dataset = FeatureRows(cache["train_original"], cache["train_labels"],
-                                    cache["train_flipped"], augment=not quick)
+                                    cache["train_flipped"], augment=not quick,
+                                    jpeg_original=cache.get("train_jpeg_original"),
+                                    jpeg_flipped=cache.get("train_jpeg_flipped"),
+                                    jpeg_probability=jpeg_probability)
         val_dataset = FeatureRows(cache["val_original"], cache["val_labels"])
         write_json(out / "feature_cache_info.json", {"file": cache_path.name,
             "metadata": cache["metadata"], "test_images_cached": False,
@@ -325,8 +338,10 @@ if __name__ == "__main__":
     p.add_argument("--allow-cpu-real", action="store_true")
     p.add_argument("--cache-features", action="store_true")
     p.add_argument("--scheduler", action="store_true")
+    p.add_argument("--jpeg-qualities", type=int, nargs="*", default=[])
+    p.add_argument("--jpeg-probability", type=float, default=.5)
     a = p.parse_args()
     train(a.prepared, a.output, a.epochs, a.batch_size, quick=a.quick,
           resume=not a.no_resume, allow_cpu_real=a.allow_cpu_real or a.cache_features, cache_features=a.cache_features,
           finetune_blocks=0 if a.cache_features else 3, warmup_epochs=0 if a.cache_features else 1,
-          use_scheduler=a.scheduler)
+          use_scheduler=a.scheduler, jpeg_qualities=a.jpeg_qualities, jpeg_probability=a.jpeg_probability)
