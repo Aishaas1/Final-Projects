@@ -6,9 +6,9 @@ from PIL import Image
 from facejpeg.infer import Predictor
 
 
-def create_app(checkpoint):
+def create_app(checkpoint, device=None):
     try:
-        predictor = Predictor(checkpoint)
+        predictor = Predictor(checkpoint, device=device)
         startup_message = ("⚠️ كشف الأصالة غير متاح: الأوزان الحالية لم تُدرّب على صور الوجوه. "
                            "هذه واجهة معاينة وضغط JPEG فقط؛ درّب Real Training على بيانات الوجوه ثم اختر best.pt."
                            if not predictor.face_classification_enabled else

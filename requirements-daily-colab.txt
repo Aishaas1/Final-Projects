@@ -1,0 +1,5 @@
+# Inference only. Preserve the compatible Torch/Torchvision pair supplied by Colab.
+numpy>=1.26,<3
+Pillow>=10.4,<13
+opencv-python-headless>=4.10,<5
+gradio==5.50.0

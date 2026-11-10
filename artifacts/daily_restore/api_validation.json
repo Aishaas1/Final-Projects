@@ -1,0 +1,10 @@
+{
+  "single_face_upload": "passed",
+  "jpeg_pixel_parity": "passed",
+  "response_text_parity": "passed",
+  "software_scores_and_face_classification_disabled": "passed",
+  "لم أجد": "passed",
+  "تالف": "passed",
+  "عدة وجوه": "passed",
+  "scope": "Software-only procedural weights; no face accuracy result."
+}

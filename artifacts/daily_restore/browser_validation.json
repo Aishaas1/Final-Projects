@@ -1,0 +1,8 @@
+{
+  "http_status": 200,
+  "upload_and_click_in_chromium": "passed",
+  "preview_and_compressed_image_rendered": true,
+  "software_fixture_face_judgments_disabled": true,
+  "browser_page_errors": [],
+  "scope": "Procedural model used to verify UI only; not face detection accuracy. No access to user Colab or trained weights."
+}
