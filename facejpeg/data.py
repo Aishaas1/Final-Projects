@@ -43,7 +43,7 @@ def inventory(root):
     return sorted(paths), counts
 
 
-def validate_manifest(root):
+def validate_manifest(root, verify_files=False, require_hashes=False):
     root = Path(root).resolve()
     frame = pd.read_csv(root / "manifest.csv", keep_default_na=False,
                         dtype={k: str for k in ["path", "split", "group", "pixel_sha256", "file_sha256", "identity", "source_id", "phash"]})
@@ -60,10 +60,17 @@ def validate_manifest(root):
             nonempty = frame[frame[key].astype(str) != ""]
             if nonempty.groupby(key).split.nunique().max() > 1:
                 raise ValueError(f"Data leakage: {key} spans multiple splits")
-    for rel in frame.path:
+    if require_hashes and "prepared_sha256" not in frame.columns:
+        raise ValueError("Legacy manifest has no prepared image hashes; regenerate prepared data before certified evaluation")
+    if "prepared_sha256" in frame.columns:
+        if frame.prepared_sha256.isna().any() or not frame.prepared_sha256.astype(str).str.fullmatch(r"[0-9a-f]{64}").all():
+            raise ValueError("Malformed or missing prepared image SHA256 digest")
+    for rel, expected in zip(frame.path, frame.get("prepared_sha256", [""] * len(frame))):
         p = (root / rel).resolve()
         if Path(rel).is_absolute() or not p.is_relative_to(root) or not p.is_file():
             raise ValueError(f"Missing/unsafe prepared image: {rel}")
+        if verify_files and expected and file_sha256(p) != expected:
+            raise ValueError(f"Prepared image changed since manifest creation: {rel}")
     return frame
 
 
@@ -229,6 +236,7 @@ def _prepare(root, output, metadata, seed, max_per_class, phash_radius, data_kin
             sampled.append(part.sample(min(len(part), cap), random_state=seed))
         clean = pd.concat(sampled).sort_index().copy()
     clean["path"] = ""
+    clean["prepared_sha256"] = ""
     monitor.stage("حفظ المعالجة المشتركة بعد التقسيم", len(clean))
     for idx, row in tqdm(clean.iterrows(), total=len(clean), desc="Normalize split images", unit="image"):
         # Identical processing for both classes; normalized originals stored losslessly AFTER split.
@@ -236,6 +244,7 @@ def _prepare(root, output, metadata, seed, max_per_class, phash_radius, data_kin
         target.parent.mkdir(parents=True, exist_ok=True)
         canonical(read_rgb(root / row.source_path)).save(target, format="PNG")
         clean.loc[idx, "path"] = target.relative_to(output).as_posix()
+        clean.loc[idx, "prepared_sha256"] = file_sha256(target)
         monitor.advance(message=f"saved {target.name}")
     report = {"raw_root": str(root), "readable": len(df), "rejected": len(bad),
               "exact_duplicates_removed": int(len(df[~df.group.isin(conflict_groups)]) - len(df[~df.group.isin(conflict_groups)].drop_duplicates("pixel_sha256"))),
@@ -252,7 +261,7 @@ def _prepare(root, output, metadata, seed, max_per_class, phash_radius, data_kin
     temp = output / "manifest.csv.tmp"
     clean.to_csv(temp, index=False)
     temp.replace(output / "manifest.csv")
-    validate_manifest(output)
+    validate_manifest(output, verify_files=True, require_hashes=True)
     monitor.event(f"اكتمل تجهيز {len(clean)} صورة؛ التقسيم والتوازن والتداخل اجتازت الفحص")
     print(json.dumps(report, ensure_ascii=False, indent=2))
     return clean

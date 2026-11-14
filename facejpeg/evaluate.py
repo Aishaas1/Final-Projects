@@ -96,7 +96,7 @@ def _evaluate(prepared, checkpoint, output, batch_size, device, qualities, monit
     model, bundle = load_bundle(checkpoint, device)
     if file_sha256(root / "manifest.csv") != bundle["manifest_sha256"]:
         raise ValueError("Test manifest differs from checkpoint's split")
-    test = validate_manifest(root).query("split == 'test'").reset_index(drop=True)
+    test = validate_manifest(root, verify_files=True).query("split == 'test'").reset_index(drop=True)
     all_predictions, summaries, matrices = [], [], {}
     roc_records = []
     for quality in qualities:
