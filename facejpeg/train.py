@@ -154,7 +154,7 @@ def _train(prepared, output, epochs, batch_size, lr, quick, resume, pretrained, 
     torch.set_num_threads(min(4, torch.get_num_threads()))
     root, out = Path(prepared), Path(output)
     monitor.stage("التحقق من التقسيم وبيئة التشغيل")
-    frame = validate_manifest(root)
+    frame = validate_manifest(root, verify_files=True)
     audit = json.loads((root / "audit.json").read_text())
     if not quick and audit["data_kind"] == "procedural_fixture":
         raise ValueError("Real Training لا يقبل بيانات fixture. اختر بيانات وجوه أو Quick Test.")

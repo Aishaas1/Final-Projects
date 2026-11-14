@@ -48,7 +48,7 @@ def profiles(gpu=False, software_test=False):
 def validation_report(prepared, checkpoint, output, device="cpu", batch_size=32):
     """Score only val rows; JPEG views come independently from each original."""
     root, out = Path(prepared), Path(output)
-    frame = validate_manifest(root).query("split == 'val'").reset_index(drop=True)
+    frame = validate_manifest(root, verify_files=True).query("split == 'val'").reset_index(drop=True)
     model, bundle = load_bundle(checkpoint, device)
     if bundle["manifest_sha256"] != file_sha256(root / "manifest.csv"):
         raise ValueError("Validation data differs from the checkpoint split")
